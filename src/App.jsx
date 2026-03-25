@@ -9,6 +9,7 @@ import AnalysisList from './pages/AnalysisList'
 import AnalysisNew from './pages/AnalysisNew'
 import ReportPage from './pages/ReportPage'
 import LoginPage from './pages/LoginPage'
+import SchoolsPage from './pages/SchoolsPage'
 import './styles/globals.css'
 
 function RequireAuth({ children }) {
@@ -29,6 +30,7 @@ export default function App() {
           }>
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard"           element={<Dashboard />} />
+            <Route path="schools"             element={<SchoolsPage />} />
             <Route path="analyses"            element={<AnalysisList />} />
             <Route path="analyses/new"        element={<AnalysisNew />} />
             <Route path="analyses/:analysisId" element={<AnalysisReview />} />
