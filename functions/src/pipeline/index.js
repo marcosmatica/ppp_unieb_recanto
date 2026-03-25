@@ -5,6 +5,9 @@
  *
  * Trigger: gs://{bucket}/analyses/{analysisId}/{fileName}
  */
+const { defineSecret } = require("firebase-functions/params")
+
+const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY")
 
 const { onObjectFinalized } = require('firebase-functions/v2/storage')
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore')
@@ -25,6 +28,7 @@ exports.onPPPUploaded = onObjectFinalized(
     timeoutSeconds: 540,      // 9 min — análise completa pode demorar
     memory: '1GiB',
     concurrency: 10,
+    secrets: [ANTHROPIC_API_KEY],
   },
   async (event) => {
     const filePath = event.data.name         // "analyses/{analysisId}/ppp2026.pdf"
@@ -172,6 +176,7 @@ function filterBySchoolStages(elements, stages) {
  * Usa batches de 500 (limite do Firestore) e recalcula stats.
  */
 async function writeResults(analysisId, results, analysis, applicable) {
+
   const BATCH_SIZE = 450
   const resultsRef = db
     .collection('analyses').doc(analysisId)

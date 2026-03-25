@@ -3,6 +3,10 @@
  * Ponto de entrada — exporta todas as Cloud Functions do projeto
  */
 
+const { defineSecret } = require("firebase-functions/params")
+
+const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY")
+
 const { initializeApp } = require('firebase-admin/app')
 initializeApp()
 

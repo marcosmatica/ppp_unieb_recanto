@@ -228,13 +228,29 @@ Critérios de status:
 // ─── Chamada à API Claude ────────────────────────────────────────────────────
 
 async function callClaude(prompt) {
+
+  const apiKey = process.env.ANTHROPIC_API_KEY || ""
+
+  if (!apiKey) {
+    throw new Error("ANTHROPIC_API_KEY não definida")
+  }
+
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
     body: JSON.stringify({
-      model:      MODEL,
+      model: MODEL,
       max_tokens: MAX_TOKENS,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        }
+      ],
     }),
   })
 
@@ -244,10 +260,12 @@ async function callClaude(prompt) {
   }
 
   const data = await response.json()
-  const text = data.content?.find(b => b.type === 'text')?.text || ''
 
-  // Parse defensivo do JSON
+  const text =
+      data.content?.find(b => b.type === 'text')?.text || ''
+
   const clean = text.replace(/```json|```/g, '').trim()
+
   return JSON.parse(clean)
 }
 

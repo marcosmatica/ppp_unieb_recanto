@@ -3,15 +3,15 @@
  * Extração de texto de PDF e DOCX com fallback OCR para documentos escaneados.
  *
  * Dependências (package.json das functions):
- *   pdf-parse, mammoth, tesseract.js, pdf2pic
+ *   pdf-parse@^1.1.1, mammoth, tesseract.js, pdf2pic
  */
 
-const pdfParse = require('pdf-parse')
-const mammoth  = require('mammoth')
+const pdfParse = require('pdf-parse')    // pdf-parse v1 puro
+const mammoth = require('mammoth')
 const { createWorker } = require('tesseract.js')
 const { fromBuffer } = require('pdf2pic')
 
-const MIN_CHARS_PER_PAGE = 80  // abaixo disso → provável scan
+const MIN_CHARS_PER_PAGE = 40
 
 /**
  * Extrai texto limpo de um buffer PDF ou DOCX.
@@ -23,8 +23,9 @@ async function extractText(buffer, contentType, fileName) {
     return extractPDF(buffer)
   }
   if (
-    contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
-    fileName.endsWith('.docx')
+      contentType ===
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      fileName.endsWith('.docx')
   ) {
     return extractDOCX(buffer)
   }
@@ -34,11 +35,13 @@ async function extractText(buffer, contentType, fileName) {
 // ─── PDF ─────────────────────────────────────────────────────────────────────
 
 async function extractPDF(buffer) {
+  // Usa pdf-parse v1 diretamente
   const data = await pdfParse(buffer)
-  const pageCount = data.numpages
-  const text = cleanText(data.text)
 
-  // Heurística: se o texto é escasso → provavelmente escaneado
+  const pageCount = data.numpages || 1
+  const text = cleanText(data.text || '')
+
+  // Heurística: se pouco texto → provável PDF escaneado
   const charsPerPage = text.length / Math.max(pageCount, 1)
   if (charsPerPage < MIN_CHARS_PER_PAGE) {
     return extractPDFOCR(buffer, pageCount)
@@ -48,7 +51,7 @@ async function extractPDF(buffer) {
 }
 
 async function extractPDFOCR(buffer, pageCount) {
-  // Rasteriza cada página e aplica OCR
+  // Usa pdf2pic + tesseract para OCR
   const convert = fromBuffer(buffer, {
     density: 200,
     format: 'png',
@@ -56,19 +59,18 @@ async function extractPDFOCR(buffer, pageCount) {
     height: 2830,
   })
 
-  const worker = await createWorker('por')  // português
-  const pages  = []
+  const worker = await createWorker('por')
+  const pages = []
 
   for (let i = 1; i <= pageCount; i++) {
     const { base64 } = await convert(i, { responseType: 'base64' })
     const { data: { text } } = await worker.recognize(
-      Buffer.from(base64, 'base64')
+        Buffer.from(base64, 'base64')
     )
     pages.push(text)
   }
 
   await worker.terminate()
-
   return {
     text: cleanText(pages.join('\n\n')),
     pageCount,
@@ -81,8 +83,8 @@ async function extractPDFOCR(buffer, pageCount) {
 async function extractDOCX(buffer) {
   const result = await mammoth.extractRawText({ buffer })
   return {
-    text: cleanText(result.value),
-    pageCount: null,    // DOCX não tem contagem de páginas nativa
+    text: cleanText(result.value || ''),
+    pageCount: null,
     method: 'docx',
   }
 }
@@ -91,12 +93,12 @@ async function extractDOCX(buffer) {
 
 function cleanText(raw) {
   return raw
-    .replace(/\r\n/g, '\n')              // normaliza quebras de linha
-    .replace(/\r/g, '\n')
-    .replace(/\n{4,}/g, '\n\n\n')        // colapsa espaços em branco excessivos
-    .replace(/[ \t]{3,}/g, '  ')         // remove espaços múltiplos
-    .replace(/[^\x20-\x7E\x80-\xFF\n]/g, ' ')  // remove chars de controle
-    .trim()
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\n{4,}/g, '\n\n\n')
+      .replace(/[ \t]{3,}/g, '  ')
+      .replace(/[^\x20-\x7E\x80-\xFF\n]/g, ' ')
+      .trim()
 }
 
 module.exports = { extractText }
