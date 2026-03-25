@@ -10,11 +10,12 @@ build/
 
 # ─── Variáveis de ambiente ────────────────────────────────────────────────────
 # NUNCA versionar credenciais
-.env.local
+.env
 .env.local
 .env.*.local
 .env.development
 .env.production
+google_cloud.json
 
 # ─── Firebase ─────────────────────────────────────────────────────────────────
 # Chave de conta de serviço (usada pelo seed.js e testes locais)

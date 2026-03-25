@@ -24,15 +24,20 @@ export default function Dashboard() {
   const [analyses, setAnalyses] = useState([])
   const [loading,  setLoading]  = useState(true)
 
-  useEffect(() => {
-    if (!profile) return
-    const fetch = async () => {
-      const data = await analysesService.getByCRE(profile.cre)
-      setAnalyses(data)
-      setLoading(false)
-    }
-    fetch()
-  }, [profile])
+    useEffect(() => {
+        const fetch = async () => {
+            if (!profile) {
+                setLoading(false)
+                return
+            }
+
+            const data = await analysesService.getByCRE(profile.cre)
+            setAnalyses(data)
+            setLoading(false)
+        }
+
+        fetch()
+    }, [profile])
 
   // Agregados
   const total    = analyses.length
