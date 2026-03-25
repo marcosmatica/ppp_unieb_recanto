@@ -10,7 +10,7 @@ build/
 
 # ─── Variáveis de ambiente ────────────────────────────────────────────────────
 # NUNCA versionar credenciais
-.env
+.env.local
 .env.local
 .env.*.local
 .env.development
