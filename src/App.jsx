@@ -35,6 +35,8 @@ export default function App() {
             <Route path="analyses/new"        element={<AnalysisNew />} />
             <Route path="analyses/:analysisId" element={<AnalysisReview />} />
             <Route path="analyses/:analysisId/report" element={<ReportPage />} />
+            <Route path="reports"  element={<div>Reports — em breve</div>} />
+            <Route path="settings" element={<div>Settings — em breve</div>} />
           </Route>
         </Routes>
       </BrowserRouter>

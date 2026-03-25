@@ -1,6 +1,6 @@
 // src/services/firebase.js
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, connectAuthEmulator } from 'firebase/auth'
 import {
   getFirestore, collection, doc, getDoc, getDocs,
   setDoc, updateDoc, addDoc, onSnapshot,
@@ -8,6 +8,11 @@ import {
 } from 'firebase/firestore'
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { getFunctions, httpsCallable } from 'firebase/functions'
+
+
+import { connectFirestoreEmulator } from 'firebase/firestore'
+import { connectStorageEmulator } from 'firebase/storage'
+import { connectFunctionsEmulator } from 'firebase/functions'
 
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
@@ -136,19 +141,28 @@ export const uploadService = {
    * Faz upload do arquivo PPP para o Cloud Storage.
    * Retorna uma Promise com progresso via onProgress(0–100).
    */
-  uploadPPP({ analysisId, file, year, onProgress }) {
-    const ext      = file.name.split('.').pop().toLowerCase()
-    const path     = `analyses/${analysisId}/ppp${year}.${ext}`
+  uploadPPP({analysisId, file, year, onProgress}) {
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `analyses/${analysisId}/ppp${year}.${ext}`
     const storageRef = ref(storage, path)
-    const task     = uploadBytesResumable(storageRef, file)
+    const task = uploadBytesResumable(storageRef, file)
 
     return new Promise((resolve, reject) => {
       task.on(
-        'state_changed',
-        snap => onProgress?.(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-        reject,
-        () => getDownloadURL(task.snapshot.ref).then(url => resolve({ path, url }))
+          'state_changed',
+          snap => onProgress?.(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+          reject,
+          () => getDownloadURL(task.snapshot.ref).then(url => resolve({path, url}))
       )
     })
   },
+}
+
+if (import.meta.env.DEV) {
+  if (!auth.emulatorConfig) {
+    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+    connectFirestoreEmulator(db, '127.0.0.1', 8080)
+    connectStorageEmulator(storage, '127.0.0.1', 9199)
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001)
+  }
 }
