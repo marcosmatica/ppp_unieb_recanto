@@ -1,0 +1,78 @@
+# ─── Dependências ────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Build ────────────────────────────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+
+# ─── Variáveis de ambiente ────────────────────────────────────────────────────
+# NUNCA versionar credenciais
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# ─── Firebase ─────────────────────────────────────────────────────────────────
+# Chave de conta de serviço (usada pelo seed.js e testes locais)
+serviceAccountKey.json
+*serviceAccount*.json
+*service-account*.json
+
+# Emuladores
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
+pubsub-debug.log
+
+# Cache de deploy
+.firebaserc.cache
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ─── Editores e IDEs ─────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── macOS / Windows ─────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ─── Testes / Coverage ───────────────────────────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+
+# ─── Vite ────────────────────────────────────────────────────────────────────
+*.local
+vite.config.js.timestamp-*
+
+# ─── Tesseract OCR (modelos baixados em runtime) ──────────────────────────────
+tessdata/
+
+# ─── Arquivos temporários do pipeline ────────────────────────────────────────
+/functions/tmp/
+/functions/*.docx
+/functions/*.pdf
