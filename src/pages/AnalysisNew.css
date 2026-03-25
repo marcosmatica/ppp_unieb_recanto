@@ -1,0 +1,53 @@
+/* src/pages/AnalysisNew.css */
+.new-form { max-width: 600px; display: flex; flex-direction: column; gap: 22px; }
+
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 13px; font-weight: 500; color: var(--gray-700); }
+.required { color: var(--red-500); }
+.optional { font-size: 11.5px; font-weight: 400; color: var(--gray-400); }
+
+.form-select {
+  padding: 9px 12px; border: 1px solid var(--gray-300);
+  border-radius: var(--radius-md); font-size: 13.5px;
+  font-family: var(--font-body); color: var(--gray-800);
+  background: var(--white); cursor: pointer; transition: border-color .15s;
+}
+.form-select:focus { outline: none; border-color: var(--blue-400); }
+
+.dropzone {
+  border: 2px dashed var(--gray-300); border-radius: var(--radius-lg);
+  padding: 32px 24px; text-align: center; cursor: pointer;
+  transition: border-color .15s, background .15s;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.dropzone.drag, .dropzone:hover { border-color: var(--blue-400); background: var(--blue-50); }
+.dz-icon { color: var(--gray-400); }
+.dz-label { font-size: 13.5px; color: var(--gray-600); font-weight: 500; }
+.dz-hint  { font-size: 12px; color: var(--gray-400); }
+
+.dropzone-filled {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; border: 1px solid var(--green-100);
+  background: var(--green-50); border-radius: var(--radius-md);
+}
+.dz-file-icon { color: var(--green-600); flex-shrink: 0; }
+.dz-filename  { flex: 1; font-size: 13px; color: var(--gray-800); font-weight: 500; }
+.dz-filesize  { font-size: 11.5px; color: var(--gray-400); }
+.dz-remove    { display: flex; align-items: center; justify-content: center; padding: 4px; background: none; border: none; color: var(--gray-400); cursor: pointer; border-radius: 4px; }
+.dz-remove:hover { background: var(--red-50); color: var(--red-500); }
+
+.upload-progress-page { display: flex; align-items: center; justify-content: center; min-height: 80vh; }
+.upload-card {
+  background: var(--white); border: 1px solid var(--gray-200); border-radius: var(--radius-xl);
+  padding: 48px; text-align: center; display: flex; flex-direction: column;
+  align-items: center; gap: 14px; max-width: 420px; box-shadow: var(--shadow-md);
+}
+.upload-done-icon { color: var(--green-500); }
+.upload-spin-icon { color: var(--blue-500); animation: spin .8s linear infinite; }
+.upload-bars { width: 100%; display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+
+.pbar-row { display: flex; align-items: center; gap: 10px; }
+.pbar-label { font-size: 12.5px; color: var(--gray-600); width: 60px; text-align: left; }
+.pbar-track { flex: 1; height: 6px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+.pbar-fill  { height: 100%; background: var(--blue-500); border-radius: 3px; transition: width .3s; }
+.pbar-pct   { font-size: 12px; color: var(--gray-500); width: 32px; text-align: right; }

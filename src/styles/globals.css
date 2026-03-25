@@ -1,0 +1,124 @@
+/* src/styles/globals.css */
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
+
+:root {
+  /* Paleta SEEDF */
+  --blue-900: #0a2342;
+  --blue-800: #103663;
+  --blue-700: #1a4f8a;
+  --blue-600: #1e6bbf;
+  --blue-500: #2380e0;
+  --blue-400: #5ba3ed;
+  --blue-100: #ddeeff;
+  --blue-50:  #f0f7ff;
+
+  --gold-600: #c8940a;
+  --gold-500: #e8aa12;
+  --gold-400: #f5c842;
+  --gold-100: #fef3c7;
+  --gold-50:  #fffbeb;
+
+  --green-600: #166534;
+  --green-500: #16a34a;
+  --green-100: #dcfce7;
+  --green-50:  #f0fdf4;
+
+  --amber-600: #92400e;
+  --amber-500: #d97706;
+  --amber-100: #fef3c7;
+  --amber-50:  #fffbeb;
+
+  --red-600:  #991b1b;
+  --red-500:  #dc2626;
+  --red-100:  #fee2e2;
+  --red-50:   #fef2f2;
+
+  --gray-900: #111827;
+  --gray-800: #1f2937;
+  --gray-700: #374151;
+  --gray-600: #4b5563;
+  --gray-500: #6b7280;
+  --gray-400: #9ca3af;
+  --gray-300: #d1d5db;
+  --gray-200: #e5e7eb;
+  --gray-100: #f3f4f6;
+  --gray-50:  #f9fafb;
+  --white:    #ffffff;
+
+  /* Semânticos */
+  --color-critical:    var(--red-500);
+  --color-critical-bg: var(--red-50);
+  --color-critical-bd: var(--red-100);
+
+  --color-attention:    var(--amber-500);
+  --color-attention-bg: var(--amber-50);
+  --color-attention-bd: var(--amber-100);
+
+  --color-adequate:    var(--green-500);
+  --color-adequate-bg: var(--green-50);
+  --color-adequate-bd: var(--green-100);
+
+  --color-overridden:    var(--blue-600);
+  --color-overridden-bg: var(--blue-50);
+  --color-overridden-bd: var(--blue-100);
+
+  /* Layout */
+  --sidebar-w: 256px;
+  --header-h:  56px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+
+  /* Sombras */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.10);
+  --shadow-lg:  0 8px 24px rgba(0,0,0,.12);
+
+  /* Tipografia */
+  --font-display: 'Sora', sans-serif;
+  --font-body:    'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 15px; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--gray-100);
+  color: var(--gray-900);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+
+h1,h2,h3,h4 { font-family: var(--font-display); font-weight: 600; line-height: 1.25; }
+
+a { color: var(--blue-600); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+button { font-family: var(--font-body); cursor: pointer; }
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+/* Animações utilitárias */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(35,128,224,.4); }
+  70%  { box-shadow: 0 0 0 8px rgba(35,128,224,0); }
+  100% { box-shadow: 0 0 0 0 rgba(35,128,224,0); }
+}
+
+.animate-fade-in  { animation: fadeIn .25s ease both; }
+.animate-slide-in { animation: slideIn .2s ease both; }
