@@ -1,13 +1,15 @@
 /**
  * pipeline/index.js
  * Cloud Function (2nd gen) — disparada por upload no Cloud Storage
- * Orquestra as etapas 1–8 do pipeline de análise de PPP
+ * Orquestra as etapas do pipeline de análise de PPP
  *
- * Trigger: gs://{bucket}/analyses/{analysisId}/{fileName}
+ * Fase 1 (automática): extração → seções → Haiku → grava resultados
+ *   → status: 'haiku_complete', lista deepCandidates no doc de análise
+ * Fase 2 (sob demanda): usuário confirma → triggerDeepReview (deepReview.js)
  */
-const { defineSecret } = require("firebase-functions/params")
 
-const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY")
+const { defineSecret } = require('firebase-functions/params')
+const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY')
 
 const { onObjectFinalized } = require('firebase-functions/v2/storage')
 const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore')
@@ -21,120 +23,128 @@ const { logger } = require('firebase-functions')
 const db = getFirestore()
 
 // ─── Trigger ──────────────────────────────────────────────────────────────────
+exports.triggerDeepReview = require('./pipeline/deepReview').triggerDeepReview
 
 exports.onPPPUploaded = onObjectFinalized(
   {
     region: 'southamerica-east1',
-    timeoutSeconds: 540,      // 9 min — análise completa pode demorar
+    timeoutSeconds: 540,
     memory: '1GiB',
     concurrency: 10,
     secrets: [ANTHROPIC_API_KEY],
   },
   async (event) => {
-    const filePath = event.data.name         // "analyses/{analysisId}/ppp2026.pdf"
+    const filePath    = event.data.name
     const contentType = event.data.contentType
 
-    // Só processa arquivos de PPP (ignora saídas do próprio pipeline)
     if (!filePath.startsWith('analyses/')) return
     if (!isDocumentFile(contentType)) return
 
-    const segments = filePath.split('/')
+    const segments   = filePath.split('/')
     const analysisId = segments[1]
-    const fileName   = segments[2]            // "ppp2026.pdf" ou "ppp2025.pdf"
+    const fileName   = segments[2]
     const pppYear    = fileName.startsWith('ppp2026') ? 2026 : 2025
-
-    logger.info(`Pipeline iniciado`, { analysisId, pppYear, filePath })
 
     const analysisRef = db.collection('analyses').doc(analysisId)
 
     try {
-      // ── Marca início do processamento ───────────────────────────────────────
-      await analysisRef.update({
-        status: 'pending',
-        'aiAnalysis.startedAt': Timestamp.now(),
-        updatedAt: Timestamp.now(),
-      })
-
-      // ── Etapa 2: Extração de texto ───────────────────────────────────────────
-      const bucket = getStorage().bucket(event.data.bucket)
-      const fileRef = bucket.file(filePath)
-      const [fileBuffer] = await fileRef.download()
-
-      const { text, pageCount, method } = await extractText(fileBuffer, contentType, fileName)
-      logger.info(`Texto extraído`, { analysisId, method, pageCount, chars: text.length })
-
-      // ── Etapa 3: Detecção de seções ──────────────────────────────────────────
-      const sectionMap = detectSections(text)
-      logger.info(`Seções detectadas`, { analysisId, count: Object.keys(sectionMap).length })
-
-      // ── Etapa 4: Filtra elementos aplicáveis à escola ────────────────────────
+      // ── 1. Lê dados da análise e escola ─────────────────────────────────────
       const analysisSnap = await analysisRef.get()
-      const analysis     = analysisSnap.data()
-      const schoolSnap   = await db.collection('schools').doc(analysis.schoolId).get()
-      const school       = schoolSnap.data()
+      if (!analysisSnap.exists) throw new Error(`Análise ${analysisId} não encontrada`)
+      const analysis = analysisSnap.data()
 
+      const schoolSnap = await db.collection('schools').doc(analysis.schoolId).get()
+      if (!schoolSnap.exists) throw new Error(`Escola ${analysis.schoolId} não encontrada`)
+      const school = { id: schoolSnap.id, ...schoolSnap.data() }
+
+      await analysisRef.update({ 'aiAnalysis.status': 'extracting', updatedAt: Timestamp.now() })
+
+      // ── 2. Extração de texto ─────────────────────────────────────────────────
+      const bucket = getStorage().bucket(event.data.bucket)
+      const file   = bucket.file(filePath)
+      const [buffer] = await file.download()
+
+      const { text: fullText, method, pageCount } = await extractText(buffer, contentType)
+      await analysisRef.update({ 'aiAnalysis.status': 'analyzing', updatedAt: Timestamp.now() })
+
+      // ── 3. Detecção de seções ────────────────────────────────────────────────
+      const sectionMap = detectSections(fullText)
+
+      // ── 4. Carrega checklist e filtra por escola ─────────────────────────────
       const allElements = await getChecklistDefinitions()
-      const applicable  = filterBySchoolStages(allElements, school.stages)
-      logger.info(`Elementos aplicáveis`, { analysisId, total: applicable.length })
+      const applicable  = filterBySchoolStages(allElements, school.stages || {})
 
-      // ── Etapa 5: Análise por elemento (Claude API) ───────────────────────────
-      const results = await analyzeAllElements({
+      // ── 5. Análise Haiku (lote por bloco) ────────────────────────────────────
+      const { results, deepCandidates } = await analyzeAllElements({
         elements: applicable,
         sectionMap,
-        fullText: text,
+        fullText,
         school,
         analysisId,
         year: pppYear,
       })
 
-      // ── Etapa 6: Grava resultados no Firestore ───────────────────────────────
-      await writeResults(analysisId, results, analysis, applicable)
+      // ── 6. Grava resultados no Firestore ─────────────────────────────────────
+      await saveElementResults(analysisId, results)
 
-      // ── Etapa 7: Comparativo 2025→2026 (se houver ppp2025) ──────────────────
-      if (pppYear === 2026 && analysis.files?.ppp2025?.extractedText) {
-        await runComparison(analysisId, results)
-      }
+      // ── 7. Comparação com ano anterior (se existir) ──────────────────────────
+      await runComparison(analysisId, results)
 
-      // ── Etapa 8: Marca análise como pronta para revisão ──────────────────────
+      // ── 8. Atualiza status — haiku_complete ───────────────────────────────────
+      //    deepCandidates: IDs dos elementos críticos com score baixo
+      //    O frontend detecta este status e exibe o banner de confirmação
+      const stats = computeStats(results)
+
       await analysisRef.update({
-        status: 'in_progress',
-        'aiAnalysis.ranAt':        Timestamp.now(),
-        'aiAnalysis.modelVersion': 'claude-sonnet-4-6',
-        'aiAnalysis.error':        null,
-        [`files.${pppYear === 2026 ? 'ppp2026' : 'ppp2025'}.extractedText`]: true,
+        'aiAnalysis.status':           'haiku_complete',
+        'aiAnalysis.ranAt':            Timestamp.now(),
+        'aiAnalysis.model':            'haiku',
+        'aiAnalysis.deepCandidates':   deepCandidates,
+        'aiAnalysis.deepReviewDone':   false,
+        'aiAnalysis.method':           method,
+        'aiAnalysis.pageCount':        pageCount,
+        [`${pppYear === 2026 ? 'ppp2026' : 'ppp2025'}.extractedText`]: true,
+        stats,
         updatedAt: Timestamp.now(),
       })
 
-      // Log de auditoria
+      // ── 9. Log de auditoria ──────────────────────────────────────────────────
       await db.collection('audit_log').add({
-        action:     'ai_analysis_complete',
+        action:     'haiku_analysis_complete',
         analysisId,
         schoolId:   analysis.schoolId,
         userId:     'system',
         elementId:  null,
         before:     null,
-        after:      { status: 'in_progress', elementCount: applicable.length },
+        after:      {
+          status:         'haiku_complete',
+          elementCount:   applicable.length,
+          deepCandidates: deepCandidates.length,
+        },
         metadata:   { method, pageCount, pppYear },
         timestamp:  Timestamp.now(),
       })
 
-      logger.info(`Pipeline concluído com sucesso`, { analysisId })
+      logger.info(`Fase 1 (Haiku) concluída`, {
+        analysisId,
+        elements: applicable.length,
+        deepCandidates: deepCandidates.length,
+      })
 
     } catch (err) {
       logger.error(`Erro no pipeline`, { analysisId, error: err.message })
-
       await analysisRef.update({
         'aiAnalysis.error': err.message,
-        'aiAnalysis.ranAt': Timestamp.now(),
+        'aiAnalysis.status': 'error',
+        'aiAnalysis.ranAt':  Timestamp.now(),
         updatedAt: Timestamp.now(),
       })
-
-      throw err  // Cloud Functions vai retentar automaticamente
+      throw err
     }
   }
 )
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function isDocumentFile(contentType) {
   return [
@@ -143,10 +153,6 @@ function isDocumentFile(contentType) {
   ].includes(contentType)
 }
 
-/**
- * Lê todos os elementos de /checklist_definitions (são poucos, ~30)
- * e cacheia na instância da função para evitar leituras repetidas.
- */
 let _checklistCache = null
 async function getChecklistDefinitions() {
   if (_checklistCache) return _checklistCache
@@ -159,49 +165,30 @@ async function getChecklistDefinitions() {
   return _checklistCache
 }
 
-/**
- * Remove elementos condicionais que não se aplicam à escola
- * Exemplo: bloco 4 (Ensino Médio) removido se !school.stages.ensMedio
- */
 function filterBySchoolStages(elements, stages) {
   return elements.filter(el => {
     if (!el.isConditional) return true
-    const condKey = el.conditionKey               // ex: "ensMedio"
-    return stages[condKey] === true
+    return stages[el.conditionKey] === true
   })
 }
 
-/**
- * Grava os resultados da IA em batch no Firestore.
- * Usa batches de 500 (limite do Firestore) e recalcula stats.
- */
-async function writeResults(analysisId, results, analysis, applicable) {
+async function saveElementResults(analysisId, results) {
+  const ref = db.collection('analyses').doc(analysisId).collection('elementResults')
+  const BATCH_SIZE = 500
 
-  const BATCH_SIZE = 450
-  const resultsRef = db
-    .collection('analyses').doc(analysisId)
-    .collection('elementResults')
-
-  // Batch write dos elementResults
   for (let i = 0; i < results.length; i += BATCH_SIZE) {
     const batch = db.batch()
-    const slice = results.slice(i, i + BATCH_SIZE)
-    for (const result of slice) {
-      const docRef = resultsRef.doc(result.elementId)
-      batch.set(docRef, result, { merge: false })
-    }
+    results.slice(i, i + BATCH_SIZE).forEach(result => {
+      batch.set(ref.doc(result.elementId), result)
+    })
     await batch.commit()
   }
+}
 
-  // Recalcula stats
-  const stats = results.reduce((acc, r) => {
-    acc.total++
-    const s = r.aiResult.status
-    if (s === 'critical')        acc.critical++
-    else if (s === 'attention')  acc.attention++
-    else if (s === 'adequate')   acc.adequate++
-    return acc
-  }, { total: 0, critical: 0, attention: 0, adequate: 0, confirmed: 0, overridden: 0 })
-
-  await db.collection('analyses').doc(analysisId).update({ stats })
+function computeStats(results) {
+  const counts = { adequate: 0, adequate_implicit: 0, attention: 0, critical: 0, not_applicable: 0 }
+  results.forEach(r => { counts[r.effectiveStatus] = (counts[r.effectiveStatus] || 0) + 1 })
+  const total    = results.length
+  const approved = counts.adequate + counts.adequate_implicit
+  return { ...counts, total, score: total > 0 ? Math.round((approved / total) * 100) : 0 }
 }

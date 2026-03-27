@@ -3,20 +3,19 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { analysesService, elementResultsService } from '../services/firebase'
 import { useAuth } from '../contexts/AuthContext'
-//const [checklistMap, setChecklistMap] = useState({})
 import toast from 'react-hot-toast'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../services/firebase'
 import {
   AlertCircle, AlertTriangle, CheckCircle2, MinusCircle,
   ChevronLeft, ChevronRight, SkipForward, MessageSquare,
-  ThumbsUp, ThumbsDown, FileText, RefreshCw, ArrowLeft
+  ThumbsUp, ThumbsDown, FileText, ArrowLeft
 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
 import './AnalysisReview.css'
+import DeepReviewBanner from '../components/DeepReviewBanner'
+import '../components/DeepReviewBanner.css'
 
-// ─── Constantes ──────────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const BLOCKS = [
   { code: 'B1', label: 'Pré-textuais' },
@@ -31,11 +30,12 @@ const BLOCKS = [
 ]
 
 const STATUS_CONFIG = {
-  critical:       { icon: AlertCircle,   color: 'critical',  label: 'Crítico',        borderColor: 'var(--red-500)' },
-  attention:      { icon: AlertTriangle, color: 'attention', label: 'Atenção',         borderColor: 'var(--amber-500)' },
-  adequate:       { icon: CheckCircle2,  color: 'adequate',  label: 'Adequado',        borderColor: 'var(--green-500)' },
-  overridden:     { icon: ThumbsUp,      color: 'overridden',label: 'Rev. analista',   borderColor: 'var(--blue-500)' },
-  not_applicable: { icon: MinusCircle,   color: 'gray',      label: 'N/A',             borderColor: 'var(--gray-300)' },
+  critical:          { icon: AlertCircle,   color: 'critical',  label: 'Crítico',               borderColor: 'var(--red-500)' },
+  attention:         { icon: AlertTriangle, color: 'attention', label: 'Atenção',                borderColor: 'var(--amber-500)' },
+  adequate:          { icon: CheckCircle2,  color: 'adequate',  label: 'Adequado',               borderColor: 'var(--green-500)' },
+  adequate_implicit: { icon: CheckCircle2,  color: 'adequate',  label: 'Adequado (implícito)',   borderColor: 'var(--blue-400)' },
+  overridden:        { icon: ThumbsUp,      color: 'overridden',label: 'Rev. analista',          borderColor: 'var(--blue-500)' },
+  not_applicable:    { icon: MinusCircle,   color: 'gray',      label: 'N/A',                    borderColor: 'var(--gray-300)' },
 }
 
 // ─── Página ───────────────────────────────────────────────────────────────────
@@ -44,15 +44,16 @@ export default function AnalysisReview() {
   const { analysisId } = useParams()
   const { user } = useAuth()
 
-  const [analysis,  setAnalysis]  = useState(null)
-  const [elements,  setElements]  = useState([])
+  const [analysis,    setAnalysis]    = useState(null)
+  const [elements,    setElements]    = useState([])
   const [activeBlock, setActiveBlock] = useState('B1')
   const [activeIdx,   setActiveIdx]   = useState(0)
   const [submitting,  setSubmitting]  = useState(false)
   const [comment,     setComment]     = useState('')
   const [showComment, setShowComment] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [checklistMap,  setChecklistMap]  = useState({})   // ← aqui
+  const [loading,     setLoading]     = useState(true)
+  const [checklistMap, setChecklistMap] = useState({})
+
   // Escuta tempo real
   useEffect(() => {
     if (!analysisId) return
@@ -69,11 +70,19 @@ export default function AnalysisReview() {
     return () => { unsubA(); unsubE() }
   }, [analysisId])
 
+  // Busca definições do checklist (para searchKeywords)
+  useEffect(() => {
+    getDocs(collection(db, 'checklist_definitions')).then(snapshot => {
+      const map = {}
+      snapshot.forEach(doc => { map[doc.id] = doc.data() })
+      setChecklistMap(map)
+    })
+  }, [])
+
   // Elementos do bloco ativo
   const blockElements = elements.filter(e => e.blockCode === activeBlock)
   const currentElement = blockElements[activeIdx] || null
 
-  // Quando muda bloco, reseta índice
   const handleBlockChange = (code) => {
     setActiveBlock(code)
     setActiveIdx(0)
@@ -81,17 +90,13 @@ export default function AnalysisReview() {
     setShowComment(false)
   }
 
-  // Navegar dentro do bloco
   const goNext = useCallback(() => {
     if (activeIdx < blockElements.length - 1) {
       setActiveIdx(i => i + 1)
       setComment(''); setShowComment(false)
     } else {
-      // Avança para próximo bloco
       const idx = BLOCKS.findIndex(b => b.code === activeBlock)
-      if (idx < BLOCKS.length - 1) {
-        handleBlockChange(BLOCKS[idx + 1].code)
-      }
+      if (idx < BLOCKS.length - 1) handleBlockChange(BLOCKS[idx + 1].code)
     }
   }, [activeIdx, blockElements.length, activeBlock])
 
@@ -102,7 +107,6 @@ export default function AnalysisReview() {
     }
   }, [activeIdx])
 
-  // Submete revisão
   const submitReview = async (decision) => {
     if (!currentElement || submitting) return
     setSubmitting(true)
@@ -123,17 +127,11 @@ export default function AnalysisReview() {
     }
   }
 
-  useEffect(() => {
-    // Buscar definições do checklist para obter as searchKeywords
-    const fetchChecklist = async () => {
-      const snapshot = await getDocs(collection(db, 'checklist_definitions'))
-      const map = {}
-      snapshot.forEach(doc => {
-        map[doc.id] = doc.data()  // contém searchKeywords
-      })
-      setChecklistMap(map)
-    }
-    fetchChecklist()
+  // Callback do DeepReviewBanner: força re-leitura dos elementos
+  const handleDeepReviewComplete = useCallback(() => {
+    // O onSnapshot já vai atualizar automaticamente via subscribe.
+    // Este callback pode ser usado para exibir um toast de confirmação.
+    toast.success('Análise aprofundada concluída! Os resultados foram atualizados.')
   }, [])
 
   if (loading || !analysis) {
@@ -146,7 +144,7 @@ export default function AnalysisReview() {
   return (
     <div className="review-layout">
 
-      {/* ── Cabeçalho ────────────────────────────────────────────── */}
+      {/* ── Cabeçalho ─────────────────────────────────────────────── */}
       <header className="review-header">
         <div className="review-header-left">
           <Link to="/analyses" className="back-link">
@@ -159,7 +157,6 @@ export default function AnalysisReview() {
         </div>
 
         <div className="review-header-right">
-          {/* Stats compactos */}
           <div className="header-stats">
             {stats.critical > 0 && (
               <span className="hstat critical">{stats.critical} 🔴</span>
@@ -167,10 +164,13 @@ export default function AnalysisReview() {
             {stats.attention > 0 && (
               <span className="hstat attention">{stats.attention} 🟡</span>
             )}
-            <span className="hstat adequate">{stats.adequate} 🟢</span>
+            {(stats.adequate + (stats.adequate_implicit || 0)) > 0 && (
+              <span className="hstat adequate">
+                {stats.adequate + (stats.adequate_implicit || 0)} 🟢
+              </span>
+            )}
           </div>
 
-          {/* Progress bar */}
           <div className="header-progress">
             <div className="hpbar">
               <div className="hpfill" style={{ width: `${progressPct}%` }}/>
@@ -184,15 +184,23 @@ export default function AnalysisReview() {
         </div>
       </header>
 
+      {/* ── Banner de análise aprofundada (aparece quando status === haiku_complete) ── */}
+      <div className="review-banner-area">
+        <DeepReviewBanner
+          analysisId={analysisId}
+          onComplete={handleDeepReviewComplete}
+        />
+      </div>
+
       <div className="review-body">
 
-        {/* ── Navegação por blocos ─────────────────────────────────── */}
+        {/* ── Navegação por blocos ──────────────────────────────────── */}
         <nav className="block-nav">
           {BLOCKS.map(b => {
             const blockElems = elements.filter(e => e.blockCode === b.code)
             if (blockElems.length === 0) return null
-            const pending  = blockElems.filter(e => e.humanReview?.status === 'pending').length
-            const hasCrit  = blockElems.some(e => e.effectiveStatus === 'critical')
+            const pending = blockElems.filter(e => e.humanReview?.status === 'pending').length
+            const hasCrit = blockElems.some(e => e.effectiveStatus === 'critical')
 
             return (
               <button
@@ -208,14 +216,16 @@ export default function AnalysisReview() {
           })}
         </nav>
 
-        {/* ── Painel central ───────────────────────────────────────── */}
+        {/* ── Painel central ────────────────────────────────────────── */}
         <div className="review-main">
 
           {/* Lista lateral de elementos do bloco */}
           <div className="elements-sidebar">
-            <p className="elements-sidebar-title">{BLOCKS.find(b=>b.code===activeBlock)?.label}</p>
+            <p className="elements-sidebar-title">
+              {BLOCKS.find(b => b.code === activeBlock)?.label}
+            </p>
             {blockElements.map((el, i) => {
-              const cfg = STATUS_CONFIG[el.effectiveStatus] || STATUS_CONFIG.adequate
+              const cfg  = STATUS_CONFIG[el.effectiveStatus] || STATUS_CONFIG.adequate
               const Icon = cfg.icon
               return (
                 <button
@@ -232,8 +242,6 @@ export default function AnalysisReview() {
               )
             })}
           </div>
-
-
 
           {/* Card do elemento */}
           {currentElement ? (
@@ -263,74 +271,72 @@ export default function AnalysisReview() {
   )
 }
 
-// ─── Componente para exibir trechos com highlight e navegação ──────────────
-function ExcerptViewer({ excerpts, keywords = [], elementLabel }) {
+// ─── ExcerptViewer ────────────────────────────────────────────────────────────
+
+function ExcerptViewer({ excerpts, keywords = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [expanded, setExpanded] = useState(false)
 
   if (!excerpts.length) return null
 
   const current = excerpts[currentIndex]
-  const text = current.text || ''
+  const text    = current.text || ''
   const section = current.section || 'Seção não identificada'
-  const isLong = text.length > 200
 
-  // Função para destacar palavras-chave
   const highlightText = (text, keywords) => {
     if (!keywords.length) return text
-    const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
-    const parts = text.split(regex)
-    return parts.map((part, i) =>
-        regex.test(part) ? <mark key={i} className="keyword-highlight">{part}</mark> : <span key={i}>{part}</span>
+    const escaped = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    const regex   = new RegExp(`(${escaped.join('|')})`, 'gi')
+    return text.split(regex).map((part, i) =>
+      regex.test(part) ? <mark key={i} className="keyword-highlight">{part}</mark> : <span key={i}>{part}</span>
     )
   }
 
-  const displayedText = expanded ? text : text.slice(0, 200) + (text.length > 200 ? '…' : '')
+  const displayText = expanded ? text : text.slice(0, 200) + (text.length > 200 ? '…' : '')
 
   return (
-      <div className="excerpt-viewer">
-        <div className="excerpt-header">
-          <span className="excerpt-section">📌 {section}</span>
-          {excerpts.length > 1 && (
-              <div className="excerpt-nav">
-                <button
-                    className="excerpt-nav-btn"
-                    onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
-                    disabled={currentIndex === 0}
-                >‹</button>
-                <span>{currentIndex + 1}/{excerpts.length}</span>
-                <button
-                    className="excerpt-nav-btn"
-                    onClick={() => setCurrentIndex(i => Math.min(excerpts.length - 1, i + 1))}
-                    disabled={currentIndex === excerpts.length - 1}
-                >›</button>
-              </div>
-          )}
-        </div>
-        <blockquote className="ec-excerpt">
-          <p>{highlightText(displayedText, keywords)}</p>
-          {isLong && (
-              <button className="excerpt-expand" onClick={() => setExpanded(!expanded)}>
-                {expanded ? 'Ver menos' : 'Ver mais'}
-              </button>
-          )}
-        </blockquote>
+    <div className="excerpt-viewer">
+      <div className="excerpt-header">
+        <span className="excerpt-section">📌 {section}</span>
+        {excerpts.length > 1 && (
+          <div className="excerpt-nav">
+            <button
+              className="excerpt-nav-btn"
+              onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+              disabled={currentIndex === 0}
+            >‹</button>
+            <span>{currentIndex + 1}/{excerpts.length}</span>
+            <button
+              className="excerpt-nav-btn"
+              onClick={() => setCurrentIndex(i => Math.min(excerpts.length - 1, i + 1))}
+              disabled={currentIndex === excerpts.length - 1}
+            >›</button>
+          </div>
+        )}
       </div>
+      <blockquote className="ec-excerpt">
+        <p>{highlightText(displayText, keywords)}</p>
+        {text.length > 200 && (
+          <button className="excerpt-expand" onClick={() => setExpanded(v => !v)}>
+            {expanded ? 'Ver menos' : 'Ver mais'}
+          </button>
+        )}
+      </blockquote>
+    </div>
   )
 }
 
-// ─── ElementCard ─────────────────────────────────────────────────────────────
+// ─── ElementCard ──────────────────────────────────────────────────────────────
 
 function ElementCard({
-  element: el,
-                       checklistMap,
+  element: el, checklistMap,
   submitting, comment, setComment, showComment, setShowComment,
   onAgree, onDisagree, onSkip, onPrev, onNext, hasPrev, hasNext, position,
 }) {
-  const cfg     = STATUS_CONFIG[el.effectiveStatus] || STATUS_CONFIG.adequate
-  const aiCfg   = STATUS_CONFIG[el.aiResult?.status] || STATUS_CONFIG.adequate
-  const Icon    = cfg.icon
-  const AiIcon  = aiCfg.icon
+  const cfg    = STATUS_CONFIG[el.effectiveStatus] || STATUS_CONFIG.adequate
+  const aiCfg  = STATUS_CONFIG[el.aiResult?.status] || STATUS_CONFIG.adequate
+  const Icon   = cfg.icon
+  const AiIcon = aiCfg.icon
   const reviewed = el.humanReview?.status !== 'pending'
 
   return (
@@ -344,7 +350,7 @@ function ElementCard({
           </span>
           {el.isNewIn2026 && <span className="new-badge">NOVO 2026</span>}
           {el.isCritical  && <span className="critical-badge">Obrigatório</span>}
-          {reviewed && el.humanReview.status === 'overridden' && (
+          {reviewed && el.humanReview?.status === 'overridden' && (
             <span className="override-badge">Revisado pelo analista</span>
           )}
         </div>
@@ -360,19 +366,23 @@ function ElementCard({
           <AiIcon size={14}/>
           <span>Análise da IA</span>
           <span className="ai-score">{Math.round((el.aiResult?.score || 0) * 100)}% confiança</span>
+          {el.aiResult?.status === 'adequate_implicit' && (
+            <span className="implicit-badge" title="Conteúdo presente de forma contextual, sem terminologia explícita das portarias">
+              implícito
+            </span>
+          )}
         </div>
         <p className="ec-ai-summary">{el.aiResult?.summary || '—'}</p>
 
         {/* Trechos localizados */}
         {el.aiResult?.excerpts?.length > 0 && (
-            <div className="ec-excerpts">
-              <p className="ec-excerpts-label">Trechos localizados no documento:</p>
-              <ExcerptViewer
-                  excerpts={el.aiResult.excerpts}
-                  keywords={checklistMap[el.elementId]?.searchKeywords || []}
-                  elementLabel={el.label}
-              />
-            </div>
+          <div className="ec-excerpts">
+            <p className="ec-excerpts-label">Trechos localizados no documento:</p>
+            <ExcerptViewer
+              excerpts={el.aiResult.excerpts}
+              keywords={checklistMap[el.elementId]?.searchKeywords || []}
+            />
+          </div>
         )}
 
         {/* Referências legais faltantes */}
@@ -386,9 +396,7 @@ function ElementCard({
         {/* Itens ausentes */}
         {el.aiResult?.missingItems?.length > 0 && (
           <ul className="ec-missing-list">
-            {el.aiResult.missingItems.map((item, i) => (
-              <li key={i}>{item}</li>
-            ))}
+            {el.aiResult.missingItems.map((item, i) => <li key={i}>{item}</li>)}
           </ul>
         )}
       </div>
@@ -410,33 +418,20 @@ function ElementCard({
         </div>
       )}
 
-      {/* Ações do analista */}
+      {/* Ações */}
       {!reviewed ? (
         <div className="ec-actions">
           <div className="ec-actions-primary">
-            <button
-              className="btn-agree"
-              onClick={onAgree}
-              disabled={submitting}
-            >
-              <ThumbsUp size={15}/>
-              Confirmar análise da IA
+            <button className="btn-agree" onClick={onAgree} disabled={submitting}>
+              <ThumbsUp size={15}/> Confirmar análise da IA
             </button>
-            <button
-              className="btn-disagree"
-              onClick={onDisagree}
-              disabled={submitting}
-            >
-              <ThumbsDown size={15}/>
-              Discordar — elemento adequado
+            <button className="btn-disagree" onClick={onDisagree} disabled={submitting}>
+              <ThumbsDown size={15}/> Discordar — elemento adequado
             </button>
           </div>
 
           <div className="ec-actions-secondary">
-            <button
-              className="btn-comment-toggle"
-              onClick={() => setShowComment(v => !v)}
-            >
+            <button className="btn-comment-toggle" onClick={() => setShowComment(v => !v)}>
               <MessageSquare size={13}/>
               {showComment ? 'Ocultar' : 'Adicionar comentário'}
             </button>
@@ -471,10 +466,7 @@ function ElementCard({
         <button className="btn-ghost" onClick={onPrev} disabled={!hasPrev}>
           <ChevronLeft size={15}/> Anterior
         </button>
-        <button
-          className={`btn-ghost ${hasNext ? '' : 'muted'}`}
-          onClick={onNext}
-        >
+        <button className={`btn-ghost ${hasNext ? '' : 'muted'}`} onClick={onNext}>
           Próximo <ChevronRight size={15}/>
         </button>
       </div>

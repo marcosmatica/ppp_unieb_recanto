@@ -28,3 +28,6 @@ module.exports = {
   submitHumanReview,
   generateReport,
 }
+
+const { triggerDeepReview } = require('./pipeline/deepReview')
+module.exports = { onPPPUploaded, onElementResultUpdated, submitHumanReview, generateReport, triggerDeepReview }
