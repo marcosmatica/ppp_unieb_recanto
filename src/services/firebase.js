@@ -6,9 +6,8 @@ import {
   setDoc, updateDoc, addDoc, onSnapshot,
   query, where, orderBy, limit, serverTimestamp
 } from 'firebase/firestore'
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'  // ← JÁ TEM TUDO AQUI
 import { getFunctions, httpsCallable } from 'firebase/functions'
-
 
 import { connectFirestoreEmulator } from 'firebase/firestore'
 import { connectStorageEmulator } from 'firebase/storage'

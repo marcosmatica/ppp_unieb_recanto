@@ -154,19 +154,41 @@ function buildSummaryTable(stats) {
 
 // ─── Tabela de um elemento ────────────────────────────────────────────────────
 
+// functions/src/report/documentBuilder.js - versão melhorada
+
 function buildElementRow(el, index) {
-  const status   = el.effectiveStatus || 'adequate'
+  const status = el.effectiveStatus || 'adequate'
   const statusLbl = STATUS_LABEL[status] || status.toUpperCase()
   const statusClr = STATUS_COLOR[status] || COLOR_GRAY
-  const statusBg  = STATUS_BG[status]    || COLOR_LGRAY
+  const statusBg = STATUS_BG[status] || COLOR_LGRAY
 
-  const summary     = el.aiResult?.summary     || ''
-  const missing     = el.aiResult?.missingItems || []
-  const legalMiss   = el.aiResult?.legalRefs?.missing || []
-  const analystNote = el.humanReview?.comment  || ''
-  const excerpt     = el.aiResult?.excerpts?.[0]?.text || ''
+  const summary = el.aiResult?.summary || ''
+  const missing = el.aiResult?.missingItems || []
+  const legalMiss = el.aiResult?.legalRefs?.missing || []
+  const analystNote = el.humanReview?.comment || ''
+  const excerpts = el.aiResult?.excerpts || []
 
-  // Coluna esquerda: status pill + nome
+// Na seção de trechos
+  if (excerpts.length > 0) {
+    rightChildren.push(
+        para([run('📌 Trechos localizados no documento:', { bold: true, size: 18, color: COLOR_BLUE })], { after: 60 })
+    )
+    excerpts.forEach((ex, idx) => {
+      const sectionLabel = ex.section ? `[${ex.section}]` : ''
+      rightChildren.push(
+          new Paragraph({
+            children: [
+              run(`"${ex.text}"`, { size: 18, italic: true, color: COLOR_DARK }),
+            ],
+            spacing: { before: 0, after: 40 },
+            indent: { left: 360 },
+          }),
+          para([run(sectionLabel, { size: 14, color: COLOR_GRAY })], { after: 80 })
+      )
+    })
+  }
+
+  // Coluna esquerda (igual)
   const leftCell = new TableCell({
     width: { size: 1600, type: WidthType.DXA },
     shading: { fill: statusBg, type: ShadingType.CLEAR },
@@ -184,59 +206,74 @@ function buildElementRow(el, index) {
     ],
   })
 
-  // Coluna direita: análise e itens faltantes
+  // Coluna direita - versão melhorada com MÚLTIPLOS trechos
   const rightChildren = []
 
+  // Resumo da análise
   if (summary) {
     rightChildren.push(
-      para([run(summary, { size: 20, color: COLOR_DARK })], { after: 80 })
+        para([run('📋 Análise:', { bold: true, size: 18, color: COLOR_BLUE })], { after: 40 }),
+        para([run(summary, { size: 20, color: COLOR_DARK })], { after: 80 })
     )
   }
 
-  if (excerpt) {
+  // TRECHOS LOCALIZADOS - agora mostra TODOS
+  if (excerpts.length > 0) {
     rightChildren.push(
-      para([
-        run('"', { size: 18, italic: true, color: COLOR_GRAY }),
-        run(excerpt.slice(0, 220), { size: 18, italic: true, color: COLOR_GRAY }),
-        run('"', { size: 18, italic: true, color: COLOR_GRAY }),
-      ], { after: 80 })
+        para([run('📌 Trechos localizados no documento:', { bold: true, size: 18, color: COLOR_BLUE })], { after: 60 })
     )
+
+    excerpts.forEach((ex, idx) => {
+      const sectionLabel = ex.section ? `[${ex.section}]` : ''
+      rightChildren.push(
+          new Paragraph({
+            children: [
+              run(`"${ex.text}"`, { size: 18, italic: true, color: COLOR_DARK }),
+            ],
+            spacing: { before: 0, after: 40 },
+            indent: { left: 360 },
+          }),
+          para([run(sectionLabel, { size: 14, color: COLOR_GRAY })], { after: 80 })
+      )
+    })
   }
 
+  // Itens ausentes
   if (legalMiss.length > 0) {
     rightChildren.push(
-      para([run('Referências legais ausentes: ' + legalMiss.join(', '),
-        { size: 18, color: COLOR_RED, bold: true })], { after: 60 })
+        para([run('⚠️ Referências legais ausentes: ' + legalMiss.join(', '),
+            { size: 18, color: COLOR_RED, bold: true })], { after: 60 })
     )
   }
 
   if (missing.length > 0) {
     rightChildren.push(
-      para([run('Itens não encontrados:', { size: 18, bold: true, color: COLOR_DARK })],
-        { after: 40 })
+        para([run('❌ Itens não encontrados:', { size: 18, bold: true, color: COLOR_DARK })],
+            { after: 40 })
     )
     for (const item of missing) {
       rightChildren.push(
-        new Paragraph({
-          numbering: { reference: 'bullets', level: 0 },
-          children: [run(item, { size: 18, color: COLOR_DARK })],
-          spacing: { before: 0, after: 40 },
-        })
+          new Paragraph({
+            numbering: { reference: 'bullets', level: 0 },
+            children: [run(item, { size: 18, color: COLOR_DARK })],
+            spacing: { before: 0, after: 40 },
+          })
       )
     }
   }
 
+  // Observação do analista
   if (analystNote) {
     rightChildren.push(
-      para([
-        run('Observação do analista: ', { size: 18, bold: true, color: COLOR_BLUE }),
-        run(analystNote, { size: 18, italic: true, color: COLOR_BLUE }),
-      ], { after: 0 })
+        para([
+          run('✏️ Observação do analista: ', { size: 18, bold: true, color: COLOR_BLUE }),
+          run(analystNote, { size: 18, italic: true, color: COLOR_BLUE }),
+        ], { after: 0 })
     )
   }
 
   if (rightChildren.length === 0) {
-    rightChildren.push(para([run('—', { size: 20, color: COLOR_GRAY })]))
+    rightChildren.push(para([run('—', { size: 20, color: COLOR_GRAY })], { after: 0 }))
   }
 
   const rightCell = new TableCell({

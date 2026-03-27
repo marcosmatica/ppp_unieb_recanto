@@ -162,3 +162,17 @@
   display: flex;
   flex-direction: column;
 }
+
+/* src/components/layout/AppLayout.css */
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 12px;
+  border-top: 1px solid var(--gray-200);
+  margin-top: auto;
+}
+
+.sidebar-footer .theme-toggle {
+  align-self: flex-start;
+}

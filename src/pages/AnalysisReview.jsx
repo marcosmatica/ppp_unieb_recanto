@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { analysesService, elementResultsService } from '../services/firebase'
 import { useAuth } from '../contexts/AuthContext'
+const [checklistMap, setChecklistMap] = useState({})
 import toast from 'react-hot-toast'
 import {
   AlertCircle, AlertTriangle, CheckCircle2, MinusCircle,
@@ -120,6 +121,19 @@ export default function AnalysisReview() {
     }
   }
 
+  useEffect(() => {
+    // Buscar definições do checklist para obter as searchKeywords
+    const fetchChecklist = async () => {
+      const snapshot = await getDocs(collection(db, 'checklist_definitions'))
+      const map = {}
+      snapshot.forEach(doc => {
+        map[doc.id] = doc.data()  // contém searchKeywords
+      })
+      setChecklistMap(map)
+    }
+    fetchChecklist()
+  }, [])
+
   if (loading || !analysis) {
     return <div className="page-loader"><div className="spinner"/></div>
   }
@@ -217,6 +231,8 @@ export default function AnalysisReview() {
             })}
           </div>
 
+
+
           {/* Card do elemento */}
           {currentElement ? (
             <ElementCard
@@ -241,6 +257,62 @@ export default function AnalysisReview() {
         </div>
       </div>
     </div>
+  )
+}
+
+// ─── Componente para exibir trechos com highlight e navegação ──────────────
+function ExcerptViewer({ excerpts, keywords = [], elementLabel }) {
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [expanded, setExpanded] = useState(false)
+
+  if (!excerpts.length) return null
+
+  const current = excerpts[currentIndex]
+  const text = current.text || ''
+  const section = current.section || 'Seção não identificada'
+  const isLong = text.length > 200
+
+  // Função para destacar palavras-chave
+  const highlightText = (text, keywords) => {
+    if (!keywords.length) return text
+    const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
+    const parts = text.split(regex)
+    return parts.map((part, i) =>
+        regex.test(part) ? <mark key={i} className="keyword-highlight">{part}</mark> : <span key={i}>{part}</span>
+    )
+  }
+
+  const displayedText = expanded ? text : text.slice(0, 200) + (text.length > 200 ? '…' : '')
+
+  return (
+      <div className="excerpt-viewer">
+        <div className="excerpt-header">
+          <span className="excerpt-section">📌 {section}</span>
+          {excerpts.length > 1 && (
+              <div className="excerpt-nav">
+                <button
+                    className="excerpt-nav-btn"
+                    onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
+                    disabled={currentIndex === 0}
+                >‹</button>
+                <span>{currentIndex + 1}/{excerpts.length}</span>
+                <button
+                    className="excerpt-nav-btn"
+                    onClick={() => setCurrentIndex(i => Math.min(excerpts.length - 1, i + 1))}
+                    disabled={currentIndex === excerpts.length - 1}
+                >›</button>
+              </div>
+          )}
+        </div>
+        <blockquote className="ec-excerpt">
+          <p>{highlightText(displayedText, keywords)}</p>
+          {isLong && (
+              <button className="excerpt-expand" onClick={() => setExpanded(!expanded)}>
+                {expanded ? 'Ver menos' : 'Ver mais'}
+              </button>
+          )}
+        </blockquote>
+      </div>
   )
 }
 
@@ -289,15 +361,14 @@ function ElementCard({
 
         {/* Trechos localizados */}
         {el.aiResult?.excerpts?.length > 0 && (
-          <div className="ec-excerpts">
-            <p className="ec-excerpts-label">Trecho localizado no documento:</p>
-            {el.aiResult.excerpts.map((ex, i) => (
-              <blockquote key={i} className="ec-excerpt">
-                <span className="ec-excerpt-section">{ex.section}</span>
-                <p>"{ex.text}"</p>
-              </blockquote>
-            ))}
-          </div>
+            <div className="ec-excerpts">
+              <p className="ec-excerpts-label">Trechos localizados no documento:</p>
+              <ExcerptViewer
+                  excerpts={el.aiResult.excerpts}
+                  keywords={checklistMap[el.elementId]?.searchKeywords || []}
+                  elementLabel={el.label}
+              />
+            </div>
         )}
 
         {/* Referências legais faltantes */}
