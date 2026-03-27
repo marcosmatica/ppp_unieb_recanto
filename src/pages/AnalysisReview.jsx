@@ -32,12 +32,12 @@ const BLOCKS = [
 ]
 
 const STATUS_CONFIG = {
-  critical:          { icon: AlertCircle,   color: 'critical',  label: 'Crítico',               borderColor: 'var(--red-500)' },
-  attention:         { icon: AlertTriangle, color: 'attention', label: 'Atenção',                borderColor: 'var(--amber-500)' },
-  adequate:          { icon: CheckCircle2,  color: 'adequate',  label: 'Adequado',               borderColor: 'var(--green-500)' },
-  adequate_implicit: { icon: CheckCircle2,  color: 'adequate',  label: 'Adequado (implícito)',   borderColor: 'var(--blue-400)' },
-  overridden:        { icon: ThumbsUp,      color: 'overridden',label: 'Rev. analista',          borderColor: 'var(--blue-500)' },
-  not_applicable:    { icon: MinusCircle,   color: 'gray',      label: 'N/A',                    borderColor: 'var(--gray-300)' },
+  critical:          { icon: AlertCircle,   color: 'critical',  label: 'Crítico',             borderColor: 'var(--red-500)' },
+  attention:         { icon: AlertTriangle, color: 'attention', label: 'Atenção',              borderColor: 'var(--amber-500)' },
+  adequate:          { icon: CheckCircle2,  color: 'adequate',  label: 'Adequado',             borderColor: 'var(--green-500)' },
+  adequate_implicit: { icon: CheckCircle2,  color: 'adequate',  label: 'Adequado (implícito)', borderColor: 'var(--teal-600)' },
+  overridden:        { icon: ThumbsUp,      color: 'overridden',label: 'Rev. analista',        borderColor: 'var(--blue-500)' },
+  not_applicable:    { icon: MinusCircle,   color: 'gray',      label: 'N/A',                  borderColor: 'var(--gray-300)' },
 }
 
 // ─── Página ───────────────────────────────────────────────────────────────────
@@ -46,17 +46,16 @@ export default function AnalysisReview() {
   const { analysisId } = useParams()
   const { user } = useAuth()
 
-  const [analysis,    setAnalysis]    = useState(null)
-  const [elements,    setElements]    = useState([])
-  const [activeBlock, setActiveBlock] = useState('B1')
-  const [activeIdx,   setActiveIdx]   = useState(0)
-  const [submitting,  setSubmitting]  = useState(false)
-  const [comment,     setComment]     = useState('')
-  const [showComment, setShowComment] = useState(false)
-  const [loading,     setLoading]     = useState(true)
+  const [analysis,     setAnalysis]     = useState(null)
+  const [elements,     setElements]     = useState([])
+  const [activeBlock,  setActiveBlock]  = useState('B1')
+  const [activeIdx,    setActiveIdx]    = useState(0)
+  const [submitting,   setSubmitting]   = useState(false)
+  const [comment,      setComment]      = useState('')
+  const [showComment,  setShowComment]  = useState(false)
+  const [loading,      setLoading]      = useState(true)
   const [checklistMap, setChecklistMap] = useState({})
 
-  // Escuta tempo real
   useEffect(() => {
     if (!analysisId) return
     const unsubA = analysesService.subscribe(analysisId, setAnalysis)
@@ -72,7 +71,6 @@ export default function AnalysisReview() {
     return () => { unsubA(); unsubE() }
   }, [analysisId])
 
-  // Busca definições do checklist (para searchKeywords)
   useEffect(() => {
     getDocs(collection(db, 'checklist_definitions')).then(snapshot => {
       const map = {}
@@ -81,11 +79,16 @@ export default function AnalysisReview() {
     })
   }, [])
 
-  // Elementos do bloco ativo
   const blockElements = elements.filter(e => e.blockCode === activeBlock)
+
+  // Enriquece com _keywords para o DocumentViewer
   const currentElement = blockElements[activeIdx]
-      ? { ...blockElements[activeIdx], _keywords: checklistMap[blockElements[activeIdx]?.elementId]?.searchKeywords || [] }
-      : null
+    ? {
+        ...blockElements[activeIdx],
+        _keywords: checklistMap[blockElements[activeIdx]?.elementId]?.searchKeywords || [],
+      }
+    : null
+
   const handleBlockChange = (code) => {
     setActiveBlock(code)
     setActiveIdx(0)
@@ -130,19 +133,38 @@ export default function AnalysisReview() {
     }
   }
 
-  // Callback do DeepReviewBanner: força re-leitura dos elementos
   const handleDeepReviewComplete = useCallback(() => {
-    // O onSnapshot já vai atualizar automaticamente via subscribe.
-    // Este callback pode ser usado para exibir um toast de confirmação.
-    toast.success('Análise aprofundada concluída! Os resultados foram atualizados.')
+    toast.success('Análise aprofundada concluída! Resultados atualizados.')
   }, [])
+
+  // Clique num mark no iframe navega para o elemento correspondente
+  const handleMarkClick = useCallback(({ elementId }) => {
+    const idxInBlock = blockElements.findIndex(e => e.elementId === elementId)
+    if (idxInBlock !== -1) {
+      setActiveIdx(idxInBlock)
+      setComment(''); setShowComment(false)
+      return
+    }
+    // Elemento está em outro bloco
+    const el = elements.find(e => e.elementId === elementId)
+    if (el) {
+      setActiveBlock(el.blockCode)
+      setActiveIdx(0)
+      setComment(''); setShowComment(false)
+      setTimeout(() => {
+        const newBlockEls = elements.filter(e => e.blockCode === el.blockCode)
+        const newIdx = newBlockEls.findIndex(e => e.elementId === elementId)
+        if (newIdx !== -1) setActiveIdx(newIdx)
+      }, 50)
+    }
+  }, [blockElements, elements])
 
   if (loading || !analysis) {
     return <div className="page-loader"><div className="spinner"/></div>
   }
 
   const stats = analysis.stats || {}
-  const progressPct = stats.total ? Math.round((stats.confirmed / stats.total) * 100) : 0
+  const progressPct = stats.total ? Math.round(((stats.confirmed || 0) / stats.total) * 100) : 0
 
   return (
     <div className="review-layout">
@@ -173,21 +195,19 @@ export default function AnalysisReview() {
               </span>
             )}
           </div>
-
           <div className="header-progress">
             <div className="hpbar">
               <div className="hpfill" style={{ width: `${progressPct}%` }}/>
             </div>
-            <span className="hptext">{stats.confirmed}/{stats.total}</span>
+            <span className="hptext">{stats.confirmed || 0}/{stats.total || 0}</span>
           </div>
-
           <Link to={`/analyses/${analysisId}/report`} className="btn-secondary">
             <FileText size={15}/> Gerar parecer
           </Link>
         </div>
       </header>
 
-      {/* ── Banner de análise aprofundada (aparece quando status === haiku_complete) ── */}
+      {/* ── Banner deep review ────────────────────────────────────── */}
       <div className="review-banner-area">
         <DeepReviewBanner
           analysisId={analysisId}
@@ -204,7 +224,6 @@ export default function AnalysisReview() {
             if (blockElems.length === 0) return null
             const pending = blockElems.filter(e => e.humanReview?.status === 'pending').length
             const hasCrit = blockElems.some(e => e.effectiveStatus === 'critical')
-
             return (
               <button
                 key={b.code}
@@ -219,10 +238,10 @@ export default function AnalysisReview() {
           })}
         </nav>
 
-        {/* ── Painel central ────────────────────────────────────────── */}
+        {/* ── Grade: sidebar · card · viewer ───────────────────────── */}
         <div className="review-main">
 
-          {/* Lista lateral de elementos do bloco */}
+          {/* Coluna 1: lista de elementos do bloco */}
           <div className="elements-sidebar">
             <p className="elements-sidebar-title">
               {BLOCKS.find(b => b.code === activeBlock)?.label}
@@ -246,7 +265,7 @@ export default function AnalysisReview() {
             })}
           </div>
 
-          {/* Card do elemento */}
+          {/* Coluna 2: card de análise */}
           {currentElement ? (
             <ElementCard
               element={currentElement}
@@ -268,6 +287,15 @@ export default function AnalysisReview() {
           ) : (
             <div className="no-elements">Nenhum elemento neste bloco.</div>
           )}
+
+          {/* Coluna 3: viewer do documento com highlights */}
+          <div className="review-viewer-col">
+            <DocumentViewer
+              analysisId={analysisId}
+              activeElement={currentElement}
+              onMarkClick={handleMarkClick}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -280,22 +308,24 @@ function ExcerptViewer({ excerpts, keywords = [] }) {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [expanded, setExpanded] = useState(false)
 
-  if (!excerpts.length) return null
+  if (!excerpts?.length) return null
 
   const current = excerpts[currentIndex]
-  const text    = current?.text || ''
+  const text    = current?.text    || ''  // guard: bloco pode ter falhado com 429
   const section = current?.section || 'Seção não identificada'
-  const highlightText = (text, keywords) => {
-    if (!text) return ''
-    if (!keywords?.length) return text
-    const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
-    const parts = text.split(regex)
-    return parts.map((part, i) =>
-        regex.test(part) ? <mark key={i} className="keyword-highlight">{part}</mark> : <span key={i}>{part}</span>
+  const isLong  = text.length > 200
+
+  const highlightText = (str, kws) => {
+    if (!str) return ''
+    if (!kws?.length) return str
+    const escaped = kws.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    const regex   = new RegExp(`(${escaped.join('|')})`, 'gi')
+    return str.split(regex).map((part, i) =>
+      regex.test(part) ? <mark key={i} className="keyword-highlight">{part}</mark> : <span key={i}>{part}</span>
     )
   }
 
-  const displayText = expanded ? text : text.slice(0, 200) + (text.length > 200 ? '…' : '')
+  const displayText = (!expanded && isLong) ? text.slice(0, 200) + '…' : text
 
   return (
     <div className="excerpt-viewer">
@@ -303,23 +333,15 @@ function ExcerptViewer({ excerpts, keywords = [] }) {
         <span className="excerpt-section">📌 {section}</span>
         {excerpts.length > 1 && (
           <div className="excerpt-nav">
-            <button
-              className="excerpt-nav-btn"
-              onClick={() => setCurrentIndex(i => Math.max(0, i - 1))}
-              disabled={currentIndex === 0}
-            >‹</button>
+            <button className="excerpt-nav-btn" onClick={() => setCurrentIndex(i => Math.max(0, i - 1))} disabled={currentIndex === 0}>‹</button>
             <span>{currentIndex + 1}/{excerpts.length}</span>
-            <button
-              className="excerpt-nav-btn"
-              onClick={() => setCurrentIndex(i => Math.min(excerpts.length - 1, i + 1))}
-              disabled={currentIndex === excerpts.length - 1}
-            >›</button>
+            <button className="excerpt-nav-btn" onClick={() => setCurrentIndex(i => Math.min(excerpts.length - 1, i + 1))} disabled={currentIndex === excerpts.length - 1}>›</button>
           </div>
         )}
       </div>
       <blockquote className="ec-excerpt">
         <p>{highlightText(displayText, keywords)}</p>
-        {text.length > 200 && (
+        {isLong && (
           <button className="excerpt-expand" onClick={() => setExpanded(v => !v)}>
             {expanded ? 'Ver menos' : 'Ver mais'}
           </button>
@@ -345,7 +367,6 @@ function ElementCard({
   return (
     <div className="element-card animate-fade-in" style={{ borderTopColor: cfg.borderColor }}>
 
-      {/* Topo: status + título */}
       <div className="ec-top">
         <div className="ec-badges">
           <span className={`status-pill status-${cfg.color}`}>
@@ -356,6 +377,9 @@ function ElementCard({
           {reviewed && el.humanReview?.status === 'overridden' && (
             <span className="override-badge">Revisado pelo analista</span>
           )}
+          {el.aiResult?.status === 'adequate_implicit' && (
+            <span className="implicit-badge">implícito</span>
+          )}
         </div>
         <p className="ec-nav-pos">{position}</p>
       </div>
@@ -363,21 +387,14 @@ function ElementCard({
       <h2 className="ec-title">{el.label}</h2>
       <p className="ec-normref">{el.normRef}</p>
 
-      {/* Análise da IA */}
       <div className={`ec-ai-block ai-${aiCfg.color}`}>
         <div className="ec-ai-header">
           <AiIcon size={14}/>
           <span>Análise da IA</span>
           <span className="ai-score">{Math.round((el.aiResult?.score || 0) * 100)}% confiança</span>
-          {el.aiResult?.status === 'adequate_implicit' && (
-            <span className="implicit-badge" title="Conteúdo presente de forma contextual, sem terminologia explícita das portarias">
-              implícito
-            </span>
-          )}
         </div>
         <p className="ec-ai-summary">{el.aiResult?.summary || '—'}</p>
 
-        {/* Trechos localizados */}
         {el.aiResult?.excerpts?.length > 0 && (
           <div className="ec-excerpts">
             <p className="ec-excerpts-label">Trechos localizados no documento:</p>
@@ -388,7 +405,6 @@ function ElementCard({
           </div>
         )}
 
-        {/* Referências legais faltantes */}
         {el.aiResult?.legalRefs?.missing?.length > 0 && (
           <div className="ec-missing-refs">
             <AlertCircle size={12}/>
@@ -396,7 +412,6 @@ function ElementCard({
           </div>
         )}
 
-        {/* Itens ausentes */}
         {el.aiResult?.missingItems?.length > 0 && (
           <ul className="ec-missing-list">
             {el.aiResult.missingItems.map((item, i) => <li key={i}>{item}</li>)}
@@ -404,7 +419,6 @@ function ElementCard({
         )}
       </div>
 
-      {/* Comentário do analista (se já revisado) */}
       {reviewed && el.humanReview?.comment && (
         <div className="ec-analyst-comment">
           <MessageSquare size={13}/>
@@ -412,7 +426,6 @@ function ElementCard({
         </div>
       )}
 
-      {/* Comparativo 2025 */}
       {el.comparison2025?.delta && el.comparison2025.delta !== 'same' && (
         <div className={`ec-delta delta-${el.comparison2025.delta}`}>
           {el.comparison2025.delta === 'improved'  && '↑ Melhorou em relação a 2025'}
@@ -421,7 +434,6 @@ function ElementCard({
         </div>
       )}
 
-      {/* Ações */}
       {!reviewed ? (
         <div className="ec-actions">
           <div className="ec-actions-primary">
@@ -432,7 +444,6 @@ function ElementCard({
               <ThumbsDown size={15}/> Discordar — elemento adequado
             </button>
           </div>
-
           <div className="ec-actions-secondary">
             <button className="btn-comment-toggle" onClick={() => setShowComment(v => !v)}>
               <MessageSquare size={13}/>
@@ -442,7 +453,6 @@ function ElementCard({
               <SkipForward size={13}/> Pular
             </button>
           </div>
-
           {showComment && (
             <textarea
               className="ec-comment-input"
@@ -464,7 +474,6 @@ function ElementCard({
         </div>
       )}
 
-      {/* Navegação */}
       <div className="ec-nav">
         <button className="btn-ghost" onClick={onPrev} disabled={!hasPrev}>
           <ChevronLeft size={15}/> Anterior

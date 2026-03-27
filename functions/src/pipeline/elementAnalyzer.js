@@ -29,7 +29,6 @@ async function analyzeAllElements({ elements, sectionMap, fullText, school, anal
   const blockCodes = Object.keys(blocks)
   let allResults   = []
 
-  // Reduzido de 4 para 2 blocos simultâneos para respeitar rate limit
   for (let i = 0; i < blockCodes.length; i += 2) {
     const slice = blockCodes.slice(i, i + 2)
     const batchResults = await Promise.all(
@@ -38,7 +37,6 @@ async function analyzeAllElements({ elements, sectionMap, fullText, school, anal
     allResults.push(...batchResults.flat())
     logger.info(`Blocos Haiku: ${Math.min(i + 2, blockCodes.length)}/${blockCodes.length}`, { analysisId })
 
-    // Pausa entre batches para não esgotar o rate limit
     if (i + 2 < blockCodes.length) await sleep(3000)
   }
 
@@ -48,6 +46,27 @@ async function analyzeAllElements({ elements, sectionMap, fullText, school, anal
 
   const results = allResults.map(({ _el, ...rest }) => rest)
   return { results, deepCandidates }
+}
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function analyzeBlockWithRetry(opts, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await analyzeBlock(opts)
+    } catch (err) {
+      const is429 = err.message?.includes('429') || err.message?.includes('rate_limit')
+      if (is429 && attempt < retries) {
+        const wait = attempt * 15000
+        logger.warn(`Rate limit bloco ${opts.elements[0]?.blockCode}, aguardando ${wait/1000}s (tentativa ${attempt}/${retries})`)
+        await sleep(wait)
+      } else {
+        throw err
+      }
+    }
+  }
 }
 
 // ─── Fase 2: Sonnet — re-análise dos candidatos ───────────────────────────────
@@ -60,27 +79,6 @@ async function runDeepReview({ elements, sectionMap, fullText, school, year, ana
   return results
 }
 
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-async function analyzeBlockWithRetry({ elements, sectionMap, fullText, school, year, modeOverrides }, retries = 3) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      return await analyzeBlock({ elements, sectionMap, fullText, school, year, modeOverrides })
-    } catch (err) {
-      const is429 = err.message?.includes('429') || err.message?.includes('rate_limit')
-      if (is429 && attempt < retries) {
-        const wait = attempt * 15000  // 15s, 30s, 45s
-        logger.warn(`Rate limit bloco ${elements[0]?.blockCode}, aguardando ${wait/1000}s (tentativa ${attempt}/${retries})`)
-        await sleep(wait)
-      } else {
-        throw err
-      }
-    }
-  }
-}
 // ─── Análise de bloco (Haiku) ─────────────────────────────────────────────────
 
 async function analyzeBlock({ elements, sectionMap, fullText, school, year, modeOverrides }) {

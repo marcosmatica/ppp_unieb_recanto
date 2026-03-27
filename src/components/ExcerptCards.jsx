@@ -6,7 +6,7 @@
  */
 
 import { useState } from 'react'
-import './ExcerptCards.css'
+//import './ExcerptCards.css'
 
 const STATUS_COLORS = {
   adequate:          { bg: '#f0fdf4', border: '#16a34a', text: '#14532d', badge: '#dcfce7' },
