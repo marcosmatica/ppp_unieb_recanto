@@ -168,26 +168,6 @@ function buildElementRow(el, index) {
   const analystNote = el.humanReview?.comment || ''
   const excerpts = el.aiResult?.excerpts || []
 
-// Na seção de trechos
-  if (excerpts.length > 0) {
-    rightChildren.push(
-        para([run('📌 Trechos localizados no documento:', { bold: true, size: 18, color: COLOR_BLUE })], { after: 60 })
-    )
-    excerpts.forEach((ex, idx) => {
-      const sectionLabel = ex.section ? `[${ex.section}]` : ''
-      rightChildren.push(
-          new Paragraph({
-            children: [
-              run(`"${ex.text}"`, { size: 18, italic: true, color: COLOR_DARK }),
-            ],
-            spacing: { before: 0, after: 40 },
-            indent: { left: 360 },
-          }),
-          para([run(sectionLabel, { size: 14, color: COLOR_GRAY })], { after: 80 })
-      )
-    })
-  }
-
   // Coluna esquerda (igual)
   const leftCell = new TableCell({
     width: { size: 1600, type: WidthType.DXA },

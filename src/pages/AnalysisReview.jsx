@@ -3,8 +3,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { analysesService, elementResultsService } from '../services/firebase'
 import { useAuth } from '../contexts/AuthContext'
-const [checklistMap, setChecklistMap] = useState({})
+//const [checklistMap, setChecklistMap] = useState({})
 import toast from 'react-hot-toast'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../services/firebase'
 import {
   AlertCircle, AlertTriangle, CheckCircle2, MinusCircle,
   ChevronLeft, ChevronRight, SkipForward, MessageSquare,
@@ -50,7 +52,7 @@ export default function AnalysisReview() {
   const [comment,     setComment]     = useState('')
   const [showComment, setShowComment] = useState(false)
   const [loading, setLoading] = useState(true)
-
+  const [checklistMap,  setChecklistMap]  = useState({})   // ← aqui
   // Escuta tempo real
   useEffect(() => {
     if (!analysisId) return
@@ -237,6 +239,7 @@ export default function AnalysisReview() {
           {currentElement ? (
             <ElementCard
               element={currentElement}
+              checklistMap={checklistMap}
               submitting={submitting}
               comment={comment}
               setComment={setComment}
@@ -320,6 +323,7 @@ function ExcerptViewer({ excerpts, keywords = [], elementLabel }) {
 
 function ElementCard({
   element: el,
+                       checklistMap,
   submitting, comment, setComment, showComment, setShowComment,
   onAgree, onDisagree, onSkip, onPrev, onNext, hasPrev, hasNext, position,
 }) {
