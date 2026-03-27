@@ -5,6 +5,7 @@ import { schoolsService } from '../services/firebase'
 import toast from 'react-hot-toast'
 import { Plus, School, ChevronDown, ChevronUp, Save, X } from 'lucide-react'
 import './SchoolsPage.css'
+import { REGIONALS } from '../constants/regionals'
 
 const STAGES_CONFIG = [
   { key: 'educacaoInfantil',       label: 'Educação Infantil' },
@@ -122,17 +123,30 @@ export default function SchoolsPage() {
                 onChange={e => setForm(f=>({...f,inep:e.target.value}))}
                 placeholder="8 dígitos"/>
             </div>
+            // No formulário, substitua o input de CRE por um select:
             <div className="form-group">
               <label className="form-label">CRE</label>
-              <input className="form-input" value={form.cre}
-                onChange={e => setForm(f=>({...f,cre:e.target.value}))}/>
+              <select
+                  className="form-select"
+                  value={form.cre}
+                  onChange={e => setForm(f => ({...f, cre: e.target.value}))}
+                  required
+              >
+                <option value="">Selecione uma CRE...</option>
+                {REGIONALS.map(regional => (
+                    <option key={regional.id} value={regional.code}>
+                      {regional.name}
+                    </option>
+                ))}
+              </select>
             </div>
+            {/*}
             <div className="form-group">
               <label className="form-label">Endereço</label>
               <input className="form-input" value={form.address}
                 onChange={e => setForm(f=>({...f,address:e.target.value}))}
                 placeholder="Endereço completo"/>
-            </div>
+            </div> */}
           </div>
 
           {/* Stages */}

@@ -283,3 +283,61 @@
   .kpi-grid { grid-template-columns: repeat(2, 1fr); }
   .page { padding: 20px 16px; }
 }
+
+/* src/pages/Dashboard.css - ADICIONE OU SUBSTITUA A SEÇÃO schools-list-mini */
+
+.schools-list-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.school-mini-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--white);
+  border-radius: 0.5rem;
+  border: 1px solid var(--gray-200);
+  transition: all 0.2s;
+}
+
+.school-mini-card:hover {
+  border-color: var(--blue-300);
+  box-shadow: var(--shadow-sm);
+  transform: translateX(2px);
+}
+
+.school-mini-card .school-name {
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.school-mini-card .btn-primary.small {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+/* Dark mode para escolas sem análise */
+.dark .school-mini-card {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.dark .school-mini-card:hover {
+  border-color: var(--blue-500);
+  background: var(--gray-100);
+}
+
+.dark .school-mini-card .school-name {
+  color: var(--gray-300);
+}
+
+.dark .school-mini-card .btn-primary.small {
+  background: var(--blue-600);
+}
+
+.dark .school-mini-card .btn-primary.small:hover {
+  background: var(--blue-500);
+}

@@ -122,3 +122,44 @@ button { font-family: var(--font-body); cursor: pointer; }
 
 .animate-fade-in  { animation: fadeIn .25s ease both; }
 .animate-slide-in { animation: slideIn .2s ease both; }
+
+/* Adicionar no final do globals.css */
+
+/* Ajustes para cards e elementos no dark mode */
+.dark .empty-state {
+  background: var(--gray-50);
+  border-color: var(--gray-300);
+}
+
+.dark .empty-state .empty-icon {
+  color: var(--gray-500);
+}
+
+.dark .empty-state p {
+  color: var(--gray-400);
+}
+
+.dark .stage-badge {
+  background: var(--gray-100);
+  color: var(--gray-400);
+}
+
+.dark .stage-badge.more {
+  background: var(--blue-50);
+  color: var(--blue-400);
+}
+
+.dark .stat-badge.critical {
+  background: var(--red-50);
+  color: var(--red-400);
+}
+
+.dark .stat-badge.attention {
+  background: var(--amber-50);
+  color: var(--amber-400);
+}
+
+.dark .stat-badge.adequate {
+  background: var(--green-50);
+  color: var(--green-400);
+}
