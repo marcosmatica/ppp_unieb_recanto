@@ -1,69 +1,60 @@
-/* src/pages/AnalysisReview.css */
+/* src/pages/AnalysisReview.css
+   ──────────────────────────────────────────────────────────────────────────
+   Estratégia 1: DocumentViewer é a coluna central (dominante)
+                 ElementCard fica à direita como painel secundário
 
-.review-layout {
+   Estratégia 4: MarkPopover sobreposto ao viewer ao clicar num mark
+   ────────────────────────────────────────────────────────────────────────── */
+
+/* ── Página ──────────────────────────────────────────────────────── */
+.review-page {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background: var(--gray-50);
 }
 
 /* ── Header ──────────────────────────────────────────────────────── */
 .review-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 12px 24px;
+  gap: 14px;
+  padding: 10px 20px;
   background: var(--white);
   border-bottom: 1px solid var(--gray-200);
   flex-shrink: 0;
-  box-shadow: var(--shadow-sm);
 }
-.review-header-left  { display: flex; align-items: center; gap: 16px; }
-.review-header-right { display: flex; align-items: center; gap: 14px; }
-
 .back-link {
   display: flex; align-items: center; gap: 5px;
-  font-size: 12.5px; color: var(--gray-400); white-space: nowrap;
+  font-size: 13px; color: var(--gray-500); text-decoration: none;
+  white-space: nowrap;
 }
-.back-link:hover { color: var(--blue-600); text-decoration: none; }
-
-.review-school { font-size: 15px; font-weight: 600; color: var(--gray-900); font-family: var(--font-display); }
-.review-meta   { font-size: 11.5px; color: var(--gray-400); margin-top: 1px; }
-
-.header-stats { display: flex; gap: 6px; }
-.hstat { font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 20px; }
-.hstat.critical  { background: var(--red-50);   color: var(--red-600); }
-.hstat.attention { background: var(--amber-50); color: var(--amber-600); }
-.hstat.adequate  { background: var(--green-50); color: var(--green-600); }
-
-.header-progress { display: flex; align-items: center; gap: 8px; }
-.hpbar  { width: 80px; height: 5px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
-.hpfill { height: 100%; background: var(--blue-500); border-radius: 3px; transition: width .3s; }
-.hptext { font-size: 11.5px; color: var(--gray-500); }
-
-/* ── Banner de análise aprofundada ───────────────────────────────── */
-/* Fica entre o header e o body, com scroll próprio se for longo */
-.review-banner-area {
-  flex-shrink: 0;
-  padding: 0 24px;
-  max-height: 280px;
-  overflow-y: auto;
-  background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
+.back-link:hover { color: var(--blue-600); }
+.review-title-group { flex: 1; min-width: 0; }
+.review-title {
+  font-size: 15px; font-weight: 600; color: var(--gray-900);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0;
 }
-/* Oculta a área quando não há banner (evita borda vazia) */
-.review-banner-area:empty { display: none; }
-.review-banner-area .deep-review-banner { margin: 12px 0; }
+.review-meta { font-size: 12px; color: var(--gray-500); }
+.review-header-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.btn-parecer {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px; background: var(--blue-600); color: #fff;
+  border: none; border-radius: var(--radius-md); font-size: 13px;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background .12s;
+}
+.btn-parecer:hover { background: var(--blue-700); }
 
-/* ── Body ─────────────────────────────────────────────────────────── */
+/* ── Body ────────────────────────────────────────────────────────── */
 .review-body {
-  display: flex;
   flex: 1;
+  display: flex;
   overflow: hidden;
 }
 
-/* ── Block nav ────────────────────────────────────────────────────── */
+/* ── Nav de blocos ───────────────────────────────────────────────── */
 .block-nav {
   width: 160px;
   flex-shrink: 0;
@@ -75,7 +66,6 @@
   gap: 2px;
   overflow-y: auto;
 }
-
 .block-btn {
   display: flex; align-items: center; gap: 8px;
   width: 100%; padding: 8px 10px;
@@ -88,7 +78,6 @@
 .block-btn:hover  { background: var(--gray-100); }
 .block-btn.active { background: var(--blue-50); }
 .block-btn.has-critical .block-code { color: var(--red-500); }
-
 .block-code {
   font-size: 11px; font-weight: 600;
   color: var(--gray-400); font-family: var(--font-display);
@@ -97,18 +86,22 @@
 .block-btn.active .block-code  { color: var(--blue-600); }
 .block-label { font-size: 12.5px; color: var(--gray-700); flex: 1; line-height: 1.3; }
 .block-btn.active .block-label { color: var(--blue-700); font-weight: 500; }
-
 .block-badge {
   font-size: 10px; font-weight: 600;
   background: var(--amber-100); color: var(--amber-600);
   border-radius: 10px; padding: 1px 6px;
 }
 
-/* ── Review main — grid de 3 colunas ─────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────────
+   ESTRATÉGIA 1 — grid principal com viewer no centro
+   Antes:  210px · minmax(320px,1fr) · 380px
+   Depois: 200px · 1fr              · 380px
+           sidebar  VIEWER(cresce)   card análise
+   ──────────────────────────────────────────────────────────────────── */
 .review-main {
   flex: 1;
   display: grid;
-  grid-template-columns: 210px minmax(320px, 1fr) 380px;
+  grid-template-columns: 200px 1fr 380px;
   overflow: hidden;
 }
 
@@ -135,53 +128,82 @@
 }
 .element-item:hover  { background: var(--gray-200); }
 .element-item.active { background: var(--white); box-shadow: var(--shadow-sm); }
-
-.element-status-icon { flex-shrink: 0; margin-top: 2px; }
+.element-status-icon          { flex-shrink: 0; margin-top: 2px; }
 .element-status-icon.status-critical   { color: var(--red-500); }
 .element-status-icon.status-attention  { color: var(--amber-500); }
 .element-status-icon.status-adequate   { color: var(--green-500); }
 .element-status-icon.status-overridden { color: var(--blue-500); }
 .element-status-icon.status-gray       { color: var(--gray-400); }
-
 .element-item-label { font-size: 12px; color: var(--gray-700); line-height: 1.4; flex: 1; }
-.element-item.active .element-item-label { color: var(--gray-900); font-weight: 500; }
 .element-pending-dot {
-  width: 6px; height: 6px;
-  background: var(--amber-500); border-radius: 50%;
-  flex-shrink: 0; margin-top: 5px;
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--amber-400); flex-shrink: 0; margin-top: 5px;
 }
 
-/* ── Element card (coluna 2) ─────────────────────────────────────── */
-.element-card {
-  overflow-y: auto;
-  padding: 24px 28px;
-  border-top: 3px solid transparent;
-  display: flex; flex-direction: column; gap: 16px;
+/* ────────────────────────────────────────────────────────────────────
+   ESTRATÉGIA 1 — coluna central do viewer (a maior)
+   position: relative para ancorar o MarkPopover (Estratégia 4)
+   ──────────────────────────────────────────────────────────────────── */
+.review-viewer-col {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--gray-100);
   border-right: 1px solid var(--gray-200);
+  position: relative; /* âncora do MarkPopover */
+}
+/* DocumentViewer dentro da coluna ocupa toda a altura */
+.review-viewer-col .document-viewer {
+  flex: 1;
+  border-radius: 0;
+  border: none;
 }
 
-.ec-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.ec-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+/* ── ElementCard (coluna 3 — painel direito) ──────────────────────── */
+.element-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--white);
+  border-top: 3px solid transparent;
+}
+.no-elements {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gray-400); font-size: 13px;
+  background: var(--white);
+}
+
+/* ── ElementCard internos ─────────────────────────────────────────── */
+.ec-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.ec-badges { display: flex; flex-wrap: wrap; gap: 5px; }
+.ec-nav-row { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.ec-nav-btn {
+  background: none; border: 1px solid var(--gray-200); border-radius: var(--radius-sm);
+  width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--gray-600); transition: background .12s;
+}
+.ec-nav-btn:hover:not(:disabled) { background: var(--gray-100); }
 
 .status-pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 12px; font-weight: 500; padding: 3px 10px; border-radius: 20px;
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 8px; border-radius: 12px; font-size: 11.5px; font-weight: 500;
 }
-.status-pill.status-critical  { background: var(--color-critical-bg);  color: var(--red-600);   border: 1px solid var(--color-critical-bd); }
-.status-pill.status-attention { background: var(--color-attention-bg); color: var(--amber-600); border: 1px solid var(--color-attention-bd); }
-.status-pill.status-adequate  { background: var(--color-adequate-bg);  color: var(--green-600); border: 1px solid var(--color-adequate-bd); }
-.status-pill.status-overridden{ background: var(--color-overridden-bg);color: var(--blue-700);  border: 1px solid var(--color-overridden-bd); }
-.status-pill.status-gray      { background: var(--gray-100); color: var(--gray-500); border: 1px solid var(--gray-200); }
+.status-pill.status-critical   { background: var(--color-critical-bg);  color: var(--red-700); }
+.status-pill.status-attention  { background: var(--color-attention-bg); color: var(--amber-700); }
+.status-pill.status-adequate   { background: var(--color-adequate-bg);  color: var(--green-700); }
+.status-pill.status-overridden { background: var(--blue-50);            color: var(--blue-700); }
+.status-pill.status-gray       { background: var(--gray-100);           color: var(--gray-600); }
 
-.new-badge      { font-size: 10px; font-weight: 600; background: var(--amber-100); color: var(--amber-600); padding: 2px 7px; border-radius: 10px; }
-.critical-badge { font-size: 10px; font-weight: 600; background: var(--red-50);    color: var(--red-600);   padding: 2px 7px; border-radius: 10px; border: 1px solid var(--red-100); }
-.override-badge { font-size: 10px; font-weight: 500; background: var(--blue-50);   color: var(--blue-600);  padding: 2px 7px; border-radius: 10px; }
+.new-badge      { font-size: 10px; font-weight: 600; background: var(--blue-100); color: var(--blue-700); padding: 2px 7px; border-radius: 10px; }
+.critical-badge { font-size: 10px; font-weight: 600; background: var(--red-50);   color: var(--red-600);  padding: 2px 7px; border-radius: 10px; }
+.reviewed-badge { font-size: 10px; font-weight: 600; background: var(--green-50); color: var(--green-700); padding: 2px 7px; border-radius: 10px; }
 
 .ec-nav-pos { font-size: 11.5px; color: var(--gray-400); }
-.ec-title   { font-size: 17px; font-weight: 600; color: var(--gray-900); line-height: 1.35; }
-.ec-normref { font-size: 12px; color: var(--gray-500); font-style: italic; }
+.ec-title   { font-size: 16px; font-weight: 600; color: var(--gray-900); line-height: 1.35; margin: 0; }
+.ec-normref { font-size: 12px; color: var(--gray-500); font-style: italic; margin: 0; }
 
-/* AI block */
 .ec-ai-block {
   border-radius: var(--radius-md); padding: 14px 16px;
   display: flex; flex-direction: column; gap: 10px;
@@ -194,7 +216,7 @@
 
 .ec-ai-header { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; color: var(--gray-600); }
 .ai-score     { margin-left: auto; font-size: 11px; font-weight: 400; color: var(--gray-400); }
-.ec-ai-summary { font-size: 13.5px; color: var(--gray-800); line-height: 1.6; }
+.ec-ai-summary { font-size: 13.5px; color: var(--gray-800); line-height: 1.6; margin: 0; }
 
 .ec-excerpts       { display: flex; flex-direction: column; gap: 8px; }
 .ec-excerpts-label { font-size: 11.5px; font-weight: 500; color: var(--gray-500); }
@@ -202,105 +224,57 @@
 .ec-excerpt {
   background: var(--white); border-left: 3px solid var(--blue-400);
   padding: 8px 12px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-  font-size: 13px; color: var(--gray-700);
+  font-size: 13px; color: var(--gray-700); margin: 0;
 }
 .ec-excerpt-section {
   display: block; font-size: 10.5px; font-weight: 600;
   color: var(--blue-500); text-transform: uppercase;
   letter-spacing: .4px; margin-bottom: 4px;
 }
-
 .ec-missing-refs {
   display: flex; align-items: flex-start; gap: 6px;
   font-size: 12px; color: var(--red-600);
   background: var(--red-50); padding: 8px 10px; border-radius: var(--radius-sm);
 }
-.ec-missing-refs svg { flex-shrink: 0; margin-top: 1px; }
-
-.ec-missing-list { font-size: 12.5px; color: var(--gray-700); padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
-
 .ec-analyst-comment {
   display: flex; gap: 8px; padding: 10px 12px;
   background: var(--blue-50); border-radius: var(--radius-sm);
   font-size: 13px; color: var(--blue-800); border: 1px solid var(--blue-100);
 }
-.ec-analyst-comment svg { flex-shrink: 0; margin-top: 2px; color: var(--blue-500); }
 
-.ec-delta { font-size: 12px; font-weight: 500; padding: 6px 12px; border-radius: var(--radius-sm); }
-.ec-delta.delta-improved  { background: var(--green-50); color: var(--green-600); }
-.ec-delta.delta-regressed { background: var(--red-50);   color: var(--red-600); }
-.ec-delta.delta-new       { background: var(--gold-50);  color: var(--gold-600); }
-
-/* Actions */
-.ec-actions { display: flex; flex-direction: column; gap: 10px; }
-.ec-actions-primary { display: flex; gap: 10px; flex-wrap: wrap; }
-
+.ec-actions { display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
 .btn-agree {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 20px; background: var(--green-500); color: var(--white);
-  border: none; border-radius: var(--radius-md);
-  font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .15s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 14px; background: var(--green-600); color: #fff;
+  border: none; border-radius: var(--radius-md); font-size: 13px; cursor: pointer;
+  transition: background .12s;
 }
-.btn-agree:hover:not(:disabled) { background: var(--green-600); }
-.btn-agree:disabled { opacity: .6; cursor: not-allowed; }
-
+.btn-agree:hover:not(:disabled) { background: var(--green-700); }
 .btn-disagree {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 10px 20px; background: var(--white); color: var(--gray-700);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 14px; background: var(--white); color: var(--gray-700);
   border: 1px solid var(--gray-300); border-radius: var(--radius-md);
-  font-size: 13.5px; cursor: pointer; transition: border-color .15s, background .15s;
+  font-size: 13px; cursor: pointer; transition: background .12s, border-color .12s;
 }
-.btn-disagree:hover:not(:disabled) { border-color: var(--blue-400); background: var(--blue-50); color: var(--blue-700); }
-.btn-disagree:disabled { opacity: .6; cursor: not-allowed; }
-
-.ec-actions-secondary { display: flex; align-items: center; gap: 8px; }
-
-.btn-comment-toggle {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 6px 12px; background: none;
-  border: 1px dashed var(--gray-300); border-radius: var(--radius-sm);
-  font-size: 12.5px; color: var(--gray-500); cursor: pointer;
-  transition: border-color .15s, color .15s;
+.btn-disagree:hover:not(:disabled) { background: var(--gray-50); border-color: var(--gray-400); }
+.ec-secondary-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.btn-ghost {
+  display: flex; align-items: center; gap: 5px;
+  background: none; border: none; color: var(--gray-500);
+  font-size: 12.5px; cursor: pointer; padding: 4px 6px; border-radius: var(--radius-sm);
+  transition: color .12s, background .12s;
 }
-.btn-comment-toggle:hover { border-color: var(--blue-400); color: var(--blue-600); }
-
-.ec-comment-input {
-  width: 100%; padding: 10px 12px;
-  border: 1px solid var(--gray-300); border-radius: var(--radius-md);
-  font-family: var(--font-body); font-size: 13px; color: var(--gray-800);
-  background: var(--white); resize: vertical; transition: border-color .15s;
+.btn-ghost:hover:not(:disabled) { color: var(--gray-700); background: var(--gray-100); }
+.comment-box textarea {
+  width: 100%; border: 1px solid var(--gray-300); border-radius: var(--radius-sm);
+  padding: 8px 10px; font-size: 13px; resize: vertical; font-family: inherit;
+  color: var(--gray-800);
 }
-.ec-comment-input:focus { outline: none; border-color: var(--blue-400); }
-
-.ec-reviewed-state { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-500); padding: 10px 0; }
-.text-green { color: var(--green-500); }
-
 .ec-nav {
   display: flex; justify-content: space-between;
   padding-top: 8px; border-top: 1px solid var(--gray-200); margin-top: auto;
 }
 .muted { opacity: .4; pointer-events: none; }
-
-.no-elements {
-  display: flex; align-items: center; justify-content: center;
-  color: var(--gray-400); font-size: 13px;
-  border-right: 1px solid var(--gray-200);
-}
-
-/* ── Viewer column (coluna 3) ────────────────────────────────────── */
-.review-viewer-col {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: var(--gray-50);
-  border-left: 1px solid var(--gray-200);
-}
-/* O DocumentViewer dentro da coluna ocupa toda a altura */
-.review-viewer-col .document-viewer {
-  flex: 1;
-  border-radius: 0;
-  border: none;
-}
 
 /* ── Excerpt viewer ──────────────────────────────────────────────── */
 .excerpt-viewer   { margin-top: 8px; }
@@ -321,11 +295,119 @@
 .keyword-highlight { background-color: var(--gold-100); color: var(--amber-700); border-radius: 2px; padding: 0 1px; }
 html.dark .keyword-highlight { background-color: var(--gold-500); color: var(--gray-900); }
 
-/* ── Responsive: colapsa viewer em telas menores ─────────────────── */
-@media (max-width: 1200px) {
-  .review-main { grid-template-columns: 200px minmax(300px, 1fr) 320px; }
+/* ────────────────────────────────────────────────────────────────────
+   ESTRATÉGIA 4 — MarkPopover
+   Aparece ancorado ao canto inferior-esquerdo do .review-viewer-col
+   (position: absolute, pai é position: relative)
+   ──────────────────────────────────────────────────────────────────── */
+.mark-popover {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  width: 340px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
-@media (max-width: 960px) {
+
+.mp-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-left: 4px solid var(--gray-300);
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-100);
+}
+.mp-title-row {
+  display: flex; align-items: center; gap: 7px; flex: 1; flex-wrap: wrap;
+}
+.mp-label {
+  font-size: 13px; font-weight: 600; color: var(--gray-900);
+}
+.mp-pill {
+  font-size: 10.5px !important;
+  padding: 2px 7px !important;
+}
+.mp-close {
+  background: none; border: none; cursor: pointer;
+  color: var(--gray-400); padding: 2px;
+  border-radius: var(--radius-sm); flex-shrink: 0;
+  transition: color .12s, background .12s;
+}
+.mp-close:hover { color: var(--gray-700); background: var(--gray-100); }
+
+.mp-summary {
+  font-size: 12.5px; color: var(--gray-700); line-height: 1.55;
+  padding: 10px 14px 8px; margin: 0;
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.mp-excerpt {
+  padding: 8px 14px 10px;
+  border-bottom: 1px solid var(--gray-100);
+}
+.mp-excerpt-label {
+  display: block; font-size: 10.5px; font-weight: 600;
+  color: var(--blue-500); text-transform: uppercase;
+  letter-spacing: .4px; margin-bottom: 5px;
+}
+.mp-excerpt-text {
+  font-size: 12px; color: var(--gray-600); line-height: 1.5;
+  margin: 0; font-style: italic;
+}
+
+.mp-missing {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  font-size: 11.5px; color: var(--red-600);
+  background: var(--red-50);
+  border-bottom: 1px solid var(--gray-100);
+}
+
+.mp-navigate {
+  padding: 9px 14px;
+  background: none; border: none;
+  font-size: 12px; color: var(--blue-600);
+  cursor: pointer; text-align: left; width: 100%;
+  transition: background .12s;
+}
+.mp-navigate:hover { background: var(--blue-50); }
+
+/* ── Loading ─────────────────────────────────────────────────────── */
+.review-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 100vh;
+}
+
+/* ── Animação de entrada ─────────────────────────────────────────── */
+.animate-fade-in {
+  animation: fadeIn .15s ease-out;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────── */
+@media (max-width: 1280px) {
+  .review-main { grid-template-columns: 180px 1fr 340px; }
+}
+@media (max-width: 1080px) {
+  /* Em telas menores, card some e viewer toma tudo */
   .review-main { grid-template-columns: 180px 1fr; }
-  .review-viewer-col { display: none; }
+  .element-card, .no-elements { display: none; }
+  .mark-popover { width: 300px; }
+}
+@media (max-width: 760px) {
+  .review-main { grid-template-columns: 1fr; }
+  .elements-sidebar { display: none; }
+  .mark-popover { left: 8px; right: 8px; width: auto; bottom: 8px; }
 }

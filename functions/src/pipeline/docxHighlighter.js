@@ -326,37 +326,46 @@ function wrapHtml(body, analysisId) {
 <body>
 ${body}
 <script>
-  // Escuta mensagens do pai (postMessage da página de análise)
+      // 1. Sinaliza que o iframe está pronto para receber postMessages
+      window.addEventListener('DOMContentLoaded', () => {
+        window.parent.postMessage({ type: 'IFRAME_READY' }, '*')
+      })
+
+  // 2. Escuta HIGHLIGHT_ELEMENT do pai (elemento selecionado no checklist)
   window.addEventListener('message', (e) => {
     const { type, elementId } = e.data || {}
     if (type !== 'HIGHLIGHT_ELEMENT') return
 
-    // Remove estado ativo anterior
     document.querySelectorAll('mark.hl-active').forEach(m => m.classList.remove('hl-active'))
     document.body.classList.remove('has-active')
 
     if (!elementId) return
 
-    // Ativa os marks do elemento selecionado
     const marks = document.querySelectorAll(\`mark[data-element="\${elementId}"]\`)
     if (marks.length === 0) return
-
+ 
     document.body.classList.add('has-active')
     marks.forEach(m => m.classList.add('hl-active'))
-
-    // Scroll para o primeiro mark visível
     marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
   })
-
-  // Ao clicar num mark, notifica o pai qual elemento foi clicado
+ 
+  // 3. Ao clicar num mark, notifica o pai com elementId + label + status
+  //    (usado pelo MarkPopover da Estratégia 4)
   document.addEventListener('click', (e) => {
     const mark = e.target.closest('mark[data-element]')
     if (!mark) return
+ 
+    // Seleciona o mark clicado visualmente
+    document.querySelectorAll('mark.hl-active').forEach(m => m.classList.remove('hl-active'))
+    document.body.classList.add('has-active')
+    document.querySelectorAll(\`mark[data-element="\${mark.dataset.element}"]\`)
+      .forEach(m => m.classList.add('hl-active'))
+ 
     window.parent.postMessage({
       type:      'MARK_CLICKED',
       elementId: mark.dataset.element,
-      label:     mark.dataset.label,
-      status:    mark.dataset.status,
+      label:     mark.dataset.label  || '',
+      status:    mark.dataset.status || '',
     }, '*')
   })
 </script>
