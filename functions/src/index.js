@@ -3,31 +3,34 @@
  * Ponto de entrada — exporta todas as Cloud Functions do projeto
  */
 
-const { defineSecret } = require("firebase-functions/params")
-
-const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY")
-
 const { initializeApp } = require('firebase-admin/app')
 initializeApp()
 
-// Pipeline principal (Storage trigger)
+// Pipeline principal (Storage trigger — fase 1: Haiku)
 const { onPPPUploaded } = require('./pipeline/index')
 
-// Triggers Firestore + callable de revisão
+// Deep review (callable — fase 2: Sonnet, sob confirmação do usuário)
+const { triggerDeepReview } = require('./pipeline/deepReview')
+
+// Triggers Firestore + callable de revisão humana
 const {
   onElementResultUpdated,
   submitHumanReview,
 } = require('./pipeline/comparator')
 
-// Geração do parecer final
+// Feedback aggregator (scheduled — ajusta modos de interpretação semanalmente)
+const { aggregateFeedback } = require('./pipeline/feedbackAggregator')
+
+// Geração do parecer final (.docx)
 const { generateReport } = require('./report/generateReport')
 
+const { getDocumentViewerUrl } = require('./report/getDocumentViewerUrl')
 module.exports = {
   onPPPUploaded,
+  triggerDeepReview,
   onElementResultUpdated,
   submitHumanReview,
+  aggregateFeedback,
   generateReport,
+  getDocumentViewerUrl,
 }
-
-const { triggerDeepReview } = require('./pipeline/deepReview')
-module.exports = { onPPPUploaded, onElementResultUpdated, submitHumanReview, generateReport, triggerDeepReview }

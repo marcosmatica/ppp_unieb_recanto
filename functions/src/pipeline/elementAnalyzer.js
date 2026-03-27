@@ -1,71 +1,90 @@
 /**
- * pipeline/elementAnalyzer.js
+ * pipeline/elementAnalyzer.js  (v4 — interpretação pedagógica em 4 camadas)
  *
- * Exporta duas funções:
- *   analyzeAllElements — fase 1 (Haiku, lote por bloco)
- *   runDeepReview      — fase 2 (Sonnet, elementos críticos confirmados pelo usuário)
+ * Novidades em relação à v3:
+ *   - Camada 1: lê interpretationMode do elemento (seed.js / Firestore)
+ *   - Camada 2: preScore TF-IDF antes de chamar a IA (boost de confiança contextual)
+ *   - Camada 3: buildBatchPrompt adaptativo — instrução de rigor varia por modo
+ *   - Camada 4: integra overrides do feedbackAggregator (modos ajustados por feedback)
  */
+
+'use strict'
 
 const { logger } = require('firebase-functions')
 const { Timestamp } = require('firebase-admin/firestore')
+const { resolveMode, getModeConfig } = require('./interpretationConfig')
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
-
 const MODEL_FAST        = 'claude-haiku-4-5-20251001'
 const MODEL_DEEP        = 'claude-sonnet-4-6'
 const MAX_TOKENS_BATCH  = 4096
 const MAX_TOKENS_SINGLE = 1024
 const CONTEXT_CHARS     = 4000
-const DEEP_SCORE_THRESH = 0.5   // candidatos à re-análise: críticos com score abaixo disto
+const DEEP_SCORE_THRESH = 0.5
 
 // ─── Fase 1: Haiku — análise completa em lote ─────────────────────────────────
 
-async function analyzeAllElements({ elements, sectionMap, fullText, school, analysisId, year }) {
-  const blocks = groupByBlock(elements)
+async function analyzeAllElements({ elements, sectionMap, fullText, school, analysisId, year, modeOverrides = {} }) {
+  const blocks     = groupByBlock(elements)
   const blockCodes = Object.keys(blocks)
-  const BLOCK_CONCURRENCY = 4
-  let allResults = []
+  let allResults   = []
 
-  for (let i = 0; i < blockCodes.length; i += BLOCK_CONCURRENCY) {
-    const slice = blockCodes.slice(i, i + BLOCK_CONCURRENCY)
+  // Reduzido de 4 para 2 blocos simultâneos para respeitar rate limit
+  for (let i = 0; i < blockCodes.length; i += 2) {
+    const slice = blockCodes.slice(i, i + 2)
     const batchResults = await Promise.all(
-      slice.map(code => analyzeBlock({ elements: blocks[code], sectionMap, fullText, school, year }))
+        slice.map(code => analyzeBlockWithRetry({ elements: blocks[code], sectionMap, fullText, school, year, modeOverrides }))
     )
     allResults.push(...batchResults.flat())
-    logger.info(`Blocos Haiku: ${Math.min(i + BLOCK_CONCURRENCY, blockCodes.length)}/${blockCodes.length}`, { analysisId })
+    logger.info(`Blocos Haiku: ${Math.min(i + 2, blockCodes.length)}/${blockCodes.length}`, { analysisId })
+
+    // Pausa entre batches para não esgotar o rate limit
+    if (i + 2 < blockCodes.length) await sleep(3000)
   }
 
-  // Identifica candidatos à re-análise (retorna junto para o pipeline gravar no Firestore)
   const deepCandidates = allResults
-    .filter(r => r._el.isCritical && r.aiResult.score < DEEP_SCORE_THRESH && r.aiResult.status !== 'not_applicable')
-    .map(r => r.elementId)
+      .filter(r => r._el.isCritical && r.aiResult.score < DEEP_SCORE_THRESH && r.aiResult.status !== 'not_applicable')
+      .map(r => r.elementId)
 
-  // Remove campo interno antes de retornar
   const results = allResults.map(({ _el, ...rest }) => rest)
-
   return { results, deepCandidates }
 }
 
-// ─── Fase 2: Sonnet — re-análise dos candidatos confirmados ──────────────────
+// ─── Fase 2: Sonnet — re-análise dos candidatos ───────────────────────────────
 
-/**
- * Chamada pelo pipeline/deepReview.js após confirmação do usuário.
- * Recebe apenas os elementos candidatos (já filtrados pelo pipeline).
- */
-async function runDeepReview({ elements, sectionMap, fullText, school, year, analysisId }) {
+async function runDeepReview({ elements, sectionMap, fullText, school, year, analysisId, modeOverrides = {} }) {
   logger.info(`Deep review Sonnet: ${elements.length} elemento(s)`, { analysisId })
-
   const results = await Promise.all(
-    elements.map(el => analyzeElementDeep({ el, sectionMap, fullText, school, year }))
+    elements.map(el => analyzeElementDeep({ el, sectionMap, fullText, school, year, modeOverrides }))
   )
-
   return results
 }
 
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function analyzeBlockWithRetry({ elements, sectionMap, fullText, school, year, modeOverrides }, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await analyzeBlock({ elements, sectionMap, fullText, school, year, modeOverrides })
+    } catch (err) {
+      const is429 = err.message?.includes('429') || err.message?.includes('rate_limit')
+      if (is429 && attempt < retries) {
+        const wait = attempt * 15000  // 15s, 30s, 45s
+        logger.warn(`Rate limit bloco ${elements[0]?.blockCode}, aguardando ${wait/1000}s (tentativa ${attempt}/${retries})`)
+        await sleep(wait)
+      } else {
+        throw err
+      }
+    }
+  }
+}
 // ─── Análise de bloco (Haiku) ─────────────────────────────────────────────────
 
-async function analyzeBlock({ elements, sectionMap, fullText, school, year }) {
-  const prompt = buildBatchPrompt(elements, sectionMap, fullText, school, year)
+async function analyzeBlock({ elements, sectionMap, fullText, school, year, modeOverrides }) {
+  const prompt = buildBatchPrompt(elements, sectionMap, fullText, school, year, modeOverrides)
 
   let aiResults
   try {
@@ -77,33 +96,78 @@ async function analyzeBlock({ elements, sectionMap, fullText, school, year }) {
   }
 
   return elements.map(el => {
-    const aiResult = aiResults.find(r => r.elementId === el.elementId) || errorResult('Elemento não retornado pela IA')
+    const aiResult = aiResults.find(r => r.elementId === el.elementId)
+      || errorResult('Elemento não retornado pela IA')
     return buildResultDocument(el, aiResult)
   })
 }
 
 // ─── Análise individual (Sonnet) ──────────────────────────────────────────────
 
-async function analyzeElementDeep({ el, sectionMap, fullText, school, year }) {
+async function analyzeElementDeep({ el, sectionMap, fullText, school, year, modeOverrides }) {
   const context = buildContext(el, sectionMap, fullText)
-  const prompt  = buildSinglePrompt(el, context, school, year)
+  const prompt  = buildSinglePrompt(el, context, school, year, modeOverrides)
 
   let aiResult
   try {
     aiResult = await callClaude(prompt, MODEL_DEEP, MAX_TOKENS_SINGLE)
   } catch (err) {
-    logger.error(`Falha Sonnet no elemento ${el.elementId}`, { error: err.message })
+    logger.error(`Falha Sonnet: ${el.elementId}`, { error: err.message })
     aiResult = errorResult(err.message)
   }
 
   return buildResultDocument(el, aiResult)
 }
 
-// ─── Prompts ──────────────────────────────────────────────────────────────────
+// ─── Camada 2: Pré-score TF-IDF ──────────────────────────────────────────────
+//
+// Calcula similaridade entre as searchKeywords do elemento e o texto da seção
+// antes de chamar a IA. O score (0–1) é incluído no prompt como "evidência
+// prévia" e também determina se o modo liberal pode ser ativado automaticamente.
 
-function buildBatchPrompt(elements, sectionMap, fullText, school, year) {
+function preScoreTFIDF(el, contextText) {
+  if (!contextText || !el.searchKeywords?.length) return 0
+
+  const text    = contextText.toLowerCase()
+  const words   = text.split(/\W+/).filter(Boolean)
+  const total   = words.length
+  if (total === 0) return 0
+
+  // TF para cada keyword
+  const scores = el.searchKeywords.map(kw => {
+    const kwLower  = kw.toLowerCase()
+    const kwWords  = kwLower.split(/\W+/).filter(Boolean)
+
+    // Conta ocorrências de cada palavra da keyword no texto
+    const tf = kwWords.reduce((sum, w) => {
+      const count = words.filter(t => t === w || t.startsWith(w.slice(0, -1))).length
+      return sum + count / total
+    }, 0) / kwWords.length
+
+    // Bônus por ocorrência da frase completa
+    const phraseBonus = text.includes(kwLower) ? 0.3 : 0
+
+    return Math.min(tf * 10 + phraseBonus, 1)
+  })
+
+  // Média dos top-3 scores (evita que keywords irrelevantes contaminem)
+  const topScores = scores.sort((a, b) => b - a).slice(0, 3)
+  return topScores.reduce((a, b) => a + b, 0) / topScores.length
+}
+
+// ─── Prompt em lote — adaptativo por modo ────────────────────────────────────
+
+function buildBatchPrompt(elements, sectionMap, fullText, school, year, modeOverrides) {
   const elementBlocks = elements.map(el => {
-    const context = buildContext(el, sectionMap, fullText)
+    const context     = buildContext(el, sectionMap, fullText)
+    const tfidfScore  = preScoreTFIDF(el, context.text)
+    const mode        = resolveMode(el, modeOverrides)
+    const modeCfg     = getModeConfig(mode)
+
+    // Modo pode ser promovido para liberal se tfidf já encontrou evidência forte
+    const effectiveMode = (tfidfScore > 0.6 && mode === 'moderate') ? 'liberal' : mode
+    const effectiveCfg  = getModeConfig(effectiveMode)
+
     const contextBlock = context.text
       ? `TRECHO (seção: "${context.sectionTitle || 'busca por keywords'}"):\n"""\n${context.text}\n"""`
       : 'TRECHO: [seção não localizada no documento]'
@@ -113,26 +177,33 @@ function buildBatchPrompt(elements, sectionMap, fullText, school, year) {
       .map(l => `${l.norm} (${l.alias})`)
       .join(', ') || 'nenhuma'
 
-    return `--- ELEMENTO: ${el.elementId} ---
+    const tfidfNote = tfidfScore > 0
+      ? `\nEvidência prévia (similaridade textual): ${Math.round(tfidfScore * 100)}% — ${
+          tfidfScore > 0.6 ? 'termos-chave bem representados no trecho'
+          : tfidfScore > 0.3 ? 'termos parcialmente presentes'
+          : 'poucos termos encontrados'
+        }`
+      : ''
+
+    return `--- ELEMENTO: ${el.elementId} [modo: ${effectiveMode}] ---
 Rótulo: ${el.label}
 Normativa: ${el.normRef}
 Refs legais obrigatórias: ${legalRequired}
-Crítico: ${el.isCritical ? 'SIM' : 'NÃO'}${el.isNewIn2026 ? ' | ⚠️ NOVO EM 2026' : ''}
+Crítico: ${el.isCritical ? 'SIM' : 'NÃO'}${el.isNewIn2026 ? ' | ⚠️ NOVO EM 2026' : ''}${tfidfNote}
+
+${effectiveCfg.promptInstruction}
+
 ${contextBlock}`
   }).join('\n\n')
 
-  return `Você é um analista pedagógico especializado em PPPs da rede pública do Distrito Federal, com domínio das normas da SEEDF.
+  return `Você é um analista pedagógico especializado em PPPs da rede pública do Distrito Federal.
 
 ESCOLA: ${school.name} | ANO: ${year} | BLOCO: ${elements[0]?.blockLabel}
 
-MODO DE ANÁLISE: pedagógico-interpretativo
-Avalie cada elemento em DOIS NÍVEIS:
-A) Verificação direta — o elemento é abordado com terminologia típica?
-B) Verificação contextual — o conteúdo cobre o mesmo objetivo pedagógico com vocabulário próprio da escola?
-
-Se (B) for satisfeito sem (A), o elemento é válido — use "adequate_implicit".
-Documentos pedagógicos frequentemente integram temas com linguagem própria da comunidade escolar.
-NÃO penalize ausência de terminologia técnica quando a intenção pedagógica estiver clara.
+PRINCÍPIO GERAL: este é um documento pedagógico elaborado por uma comunidade escolar.
+Documentos pedagógicos frequentemente integram múltiplos temas, usam linguagem própria da
+escola e descrevem práticas sem nomear explicitamente os elementos avaliados.
+Cada elemento abaixo indica seu próprio MODO de verificação — respeite-o.
 
 ELEMENTOS A ANALISAR:
 ${elementBlocks}
@@ -143,26 +214,40 @@ Responda SOMENTE com array JSON válido, sem texto adicional, sem markdown:
     "elementId": "string",
     "status": "adequate" | "adequate_implicit" | "attention" | "critical" | "not_applicable",
     "score": 0.0,
-    "summary": "até 280 chars",
+    "summary": "até 280 chars — cite evidência encontrada ou descreva a ausência",
     "excerpts": [{ "text": "trecho exato (máx 200 chars)", "section": "nome da seção" }],
     "legalRefs": { "required": [], "found": [], "missing": [] },
     "missingItems": []
   }
 ]
 
-Critérios:
+Critérios de status:
 - "adequate": presente, desenvolvido, terminologicamente explícito
-- "adequate_implicit": conteúdo válido de forma contextual/implícita
-- "attention": presente mas superficial ou genérico
-- "critical": genuinamente ausente ou título vazio sem conteúdo
+- "adequate_implicit": conteúdo válido de forma contextual (respeite o modo do elemento)
+- "attention": presente mas superficial, sem desenvolvimento real
+- "critical": genuinamente ausente — nenhuma referência ao tema
 - "not_applicable": não se aplica a esta escola/etapa`
 }
 
-function buildSinglePrompt(el, context, school, year) {
+// ─── Prompt individual (Sonnet) ───────────────────────────────────────────────
+
+function buildSinglePrompt(el, context, school, year, modeOverrides) {
+  const mode    = resolveMode(el, modeOverrides)
+  const modeCfg = getModeConfig(mode)
+
+  const tfidfScore  = preScoreTFIDF(el, context.text)
+  const tfidfNote   = tfidfScore > 0
+    ? `\nAnálise prévia de similaridade textual: ${Math.round(tfidfScore * 100)}% — ${
+        tfidfScore > 0.6 ? 'termos-chave bem representados'
+        : tfidfScore > 0.3 ? 'termos parcialmente presentes'
+        : 'poucos termos encontrados — verifique com atenção'
+      }`
+    : ''
+
   const legalRequired = el.legalBasis
     ?.filter(l => l.required)
     .map(l => `${l.norm} (${l.alias})`)
-    .join(', ') || 'nenhuma referência legal específica obrigatória'
+    .join(', ') || 'nenhuma'
 
   const contextBlock = context.text
     ? `TRECHO DO PPP (seção: "${context.sectionTitle || 'busca por keywords'}"):\n\`\`\`\n${context.text}\n\`\`\``
@@ -173,24 +258,14 @@ function buildSinglePrompt(el, context, school, year) {
 ESCOLA: ${school.name} | ANO: ${year}
 ELEMENTO: ${el.label}
 NORMATIVA: ${el.normRef}
-REFS LEGAIS OBRIGATÓRIAS: ${legalRequired}
-CRÍTICO: ${el.isCritical ? 'SIM — ausência impede aprovação' : 'NÃO'}
+REFS LEGAIS: ${legalRequired}
+CRÍTICO: ${el.isCritical ? 'SIM' : 'NÃO'}
+MODO DE ANÁLISE: ${modeCfg.label} (${mode})${tfidfNote}
 ${el.isNewIn2026 ? '⚠️ NOVO EM 2026 — exigido pela Portaria 174/2026' : ''}
 
 ${contextBlock}
 
-MODO DE ANÁLISE: pedagógico-interpretativo aprofundado
-
-Este é um documento elaborado por uma comunidade escolar. Avalie em DOIS NÍVEIS:
-A) Verificação direta: o elemento "${el.label}" está explicitamente abordado?
-B) Verificação contextual: o texto cobre o mesmo objetivo de forma implícita, integrada ou com vocabulário próprio da escola?
-
-Documentos pedagógicos frequentemente:
-- Tratam múltiplos elementos de forma integrada
-- Usam linguagem da comunidade escolar em vez de terminologia das portarias
-- Descrevem práticas sem nomear explicitamente o elemento avaliado
-
-NÃO penalize essas características. Marque "critical" SOMENTE se o conteúdo estiver genuinamente ausente.
+${modeCfg.promptInstruction}
 
 Responda SOMENTE com JSON válido, sem texto adicional, sem markdown:
 {
@@ -233,49 +308,47 @@ function extractChunkByKeywords(text, keywords, maxChars) {
 }
 
 const ELEMENT_TO_SECTION = {
-  'B1_1_capa':            ['capa'],
-  'B1_2_sumario':         ['sumario'],
-  'B1_3_apresentacao':    ['apresentacao'],
-  'B2_1_historico':       ['historico'],
-  'B2_2_diagnostico':     ['diagnostico'],
-  'B2_3_funcao_social':   ['funcao_social'],
-  'B2_4_missao':          ['missao'],
-  'B2_5_principios':      ['principios'],
-  'B3_1_metas':           ['metas'],
-  'B3_2_objetivos':       ['objetivos'],
-  'B3_3_fundamentos':     ['fundamentos'],
-  'B3_4_org_curricular':  ['org_curricular'],
-  'B3_5_org_trabalho':    ['org_trabalho'],
-  'B4_1_itinerario':      ['itinerario'],
-  'B4_2_percursos':       ['itinerario'],
-  'B4_3_ifi':             ['ifi'],
+  'B1_1_capa':                ['capa'],
+  'B1_2_sumario':             ['sumario'],
+  'B1_3_apresentacao':        ['apresentacao'],
+  'B2_1_historico':           ['historico'],
+  'B2_2_diagnostico':         ['diagnostico'],
+  'B2_3_funcao_social':       ['funcao_social'],
+  'B2_4_missao':              ['missao'],
+  'B2_5_principios':          ['principios'],
+  'B3_1_metas':               ['metas'],
+  'B3_2_objetivos':           ['objetivos'],
+  'B3_3_fundamentos':         ['fundamentos'],
+  'B3_4_org_curricular':      ['org_curricular'],
+  'B3_5_org_trabalho':        ['org_trabalho'],
+  'B4_1_itinerario':          ['itinerario'],
+  'B4_2_percursos':           ['itinerario'],
+  'B4_3_ifi':                 ['ifi'],
   'B5_1_prog_institucionais': ['prog_institucionais'],
   'B5_2_proj_especificos':    ['proj_especificos'],
   'B5_2A_proj_etnorracial':   ['proj_etnorracial', 'proj_especificos'],
   'B5_2B_proj_maria_penha':   ['proj_maria_penha', 'proj_especificos'],
   'B5_3_parcerias':           ['proj_parcerias'],
-  'B6_1_avaliacao':       ['avaliacao'],
-  'B6_2_seaa':            ['seaa'],
-  'B6_3_oe':              ['oe'],
-  'B6_4_aee':             ['aee'],
-  'B7_1_apoio_escolar':   ['apoio_escolar'],
-  'B7_2_biblioteca':      ['biblioteca'],
-  'B7_3_conselho_escolar':['conselho_escolar'],
-  'B7_4_readaptados':     ['readaptados'],
-  'B7_5_coord_pedagogica':['coord_pedagogica'],
-  'B8_1_permanencia':     ['permanencia'],
-  'B8_2_implementacao':   ['implementacao'],
-  'B8_3_monitoramento':   ['monitoramento'],
-  'B9_1_referencias':     ['referencias'],
-  'B9_2_apendices':       ['apendices'],
-  'B9_3_anexos':          ['anexos'],
+  'B6_1_avaliacao':           ['avaliacao'],
+  'B6_2_seaa':                ['seaa'],
+  'B6_3_oe':                  ['oe'],
+  'B6_4_aee':                 ['aee'],
+  'B7_1_apoio_escolar':       ['apoio_escolar'],
+  'B7_2_biblioteca':          ['biblioteca'],
+  'B7_3_conselho_escolar':    ['conselho_escolar'],
+  'B7_4_readaptados':         ['readaptados'],
+  'B7_5_coord_pedagogica':    ['coord_pedagogica'],
+  'B8_1_permanencia':         ['permanencia'],
+  'B8_2_implementacao':       ['implementacao'],
+  'B8_3_monitoramento':       ['monitoramento'],
+  'B9_1_referencias':         ['referencias'],
+  'B9_2_apendices':           ['apendices'],
+  'B9_3_anexos':              ['anexos'],
 }
 
 function getSectionKeysForElement(elementId) {
   return ELEMENT_TO_SECTION[elementId] || []
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function groupByBlock(elements) {
   return elements.reduce((acc, el) => {
@@ -284,6 +357,8 @@ function groupByBlock(elements) {
     return acc
   }, {})
 }
+
+// ─── API Claude ───────────────────────────────────────────────────────────────
 
 async function callClaude(prompt, model, maxTokens) {
   const apiKey = process.env.ANTHROPIC_API_KEY || ''
@@ -310,10 +385,12 @@ async function callClaude(prompt, model, maxTokens) {
   return JSON.parse(clean)
 }
 
+// ─── buildResultDocument ──────────────────────────────────────────────────────
+
 function buildResultDocument(el, aiResult) {
-  const VALID_STATUSES = new Set(['adequate', 'adequate_implicit', 'attention', 'critical', 'not_applicable'])
+  const VALID = new Set(['adequate', 'adequate_implicit', 'attention', 'critical', 'not_applicable'])
   const safe = {
-    status:       VALID_STATUSES.has(aiResult.status) ? aiResult.status : 'critical',
+    status:       VALID.has(aiResult.status) ? aiResult.status : 'critical',
     score:        typeof aiResult.score === 'number' ? aiResult.score : 0,
     summary:      aiResult.summary      || 'Análise não pôde ser concluída.',
     excerpts:     Array.isArray(aiResult.excerpts)     ? aiResult.excerpts     : [],
@@ -329,20 +406,21 @@ function buildResultDocument(el, aiResult) {
     normRef:         el.normRef,
     isCritical:      el.isCritical,
     isConditional:   el.isConditional,
-    conditionKey:    el.conditionKey || null,
-    isNewIn2026:     el.isNewIn2026 || false,
+    conditionKey:    el.conditionKey  || null,
+    isNewIn2026:     el.isNewIn2026   || false,
+    interpretationMode: el.interpretationMode || 'moderate',
     aiResult:        safe,
     humanReview:     { status: 'pending', decision: null, comment: null, reviewedAt: null, reviewedBy: null },
     effectiveStatus: safe.status,
     comparison2025:  { previousStatus: null, delta: null },
     createdAt:       Timestamp.now(),
     updatedAt:       Timestamp.now(),
-    _el:             el,  // removido pelo chamador antes de gravar no Firestore
+    _el:             el,
   }
 }
 
 function errorResult(message) {
-  return { status: 'critical', score: 0, summary: `Erro na análise automática: ${message}`, excerpts: [], legalRefs: { required: [], found: [], missing: [] }, missingItems: [] }
+  return { status: 'critical', score: 0, summary: `Erro: ${message}`, excerpts: [], legalRefs: { required: [], found: [], missing: [] }, missingItems: [] }
 }
 
 module.exports = { analyzeAllElements, runDeepReview }

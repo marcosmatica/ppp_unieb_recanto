@@ -14,6 +14,8 @@ import {
 import './AnalysisReview.css'
 import DeepReviewBanner from '../components/DeepReviewBanner'
 import '../components/DeepReviewBanner.css'
+import DocumentViewer from '../components/DocumentViewer'
+import '../components/DocumentViewer.css'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -81,8 +83,9 @@ export default function AnalysisReview() {
 
   // Elementos do bloco ativo
   const blockElements = elements.filter(e => e.blockCode === activeBlock)
-  const currentElement = blockElements[activeIdx] || null
-
+  const currentElement = blockElements[activeIdx]
+      ? { ...blockElements[activeIdx], _keywords: checklistMap[blockElements[activeIdx]?.elementId]?.searchKeywords || [] }
+      : null
   const handleBlockChange = (code) => {
     setActiveBlock(code)
     setActiveIdx(0)
@@ -280,15 +283,15 @@ function ExcerptViewer({ excerpts, keywords = [] }) {
   if (!excerpts.length) return null
 
   const current = excerpts[currentIndex]
-  const text    = current.text || ''
-  const section = current.section || 'Seção não identificada'
-
+  const text    = current?.text || ''
+  const section = current?.section || 'Seção não identificada'
   const highlightText = (text, keywords) => {
-    if (!keywords.length) return text
-    const escaped = keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    const regex   = new RegExp(`(${escaped.join('|')})`, 'gi')
-    return text.split(regex).map((part, i) =>
-      regex.test(part) ? <mark key={i} className="keyword-highlight">{part}</mark> : <span key={i}>{part}</span>
+    if (!text) return ''
+    if (!keywords?.length) return text
+    const regex = new RegExp(`(${keywords.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi')
+    const parts = text.split(regex)
+    return parts.map((part, i) =>
+        regex.test(part) ? <mark key={i} className="keyword-highlight">{part}</mark> : <span key={i}>{part}</span>
     )
   }
 

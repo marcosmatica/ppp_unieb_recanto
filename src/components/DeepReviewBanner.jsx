@@ -13,7 +13,7 @@
 import { useEffect, useState } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
-import { db, functions } from '../firebase'
+import { db, functions } from '../services/firebase'
 
 const STATUS_LABELS = {
   adequate:          { label: 'adequado',         color: 'var(--color-success)' },

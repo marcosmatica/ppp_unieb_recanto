@@ -1,6 +1,5 @@
 /* src/components/DeepReviewBanner.css
-   Estilos do banner de confirmação de análise aprofundada
-   Usa as custom properties do design system SEEDF (azul/dourado) */
+   Usa exclusivamente variáveis SEEDF — dark mode automático via html.dark */
 
 .deep-review-banner {
   display: flex;
@@ -8,172 +7,80 @@
   gap: 16px;
   padding: 20px 24px;
   margin: 20px 0;
-  border: 1.5px solid var(--color-seedf-blue, #1a5fa8);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--color-seedf-blue, #1a5fa8) 6%, transparent);
+  border: 1.5px solid var(--blue-500);
+  border-radius: var(--radius-lg);
+  background: var(--blue-50);
 }
-
 .deep-review-banner--reviewing {
-  border-color: var(--color-warning, #b45309);
-  background: color-mix(in srgb, var(--color-warning, #b45309) 6%, transparent);
+  border-color: var(--amber-500);
+  background: var(--amber-50);
   flex-direction: row;
   align-items: center;
   gap: 12px;
 }
 
 /* ── Header ── */
-.drb-header {
-  display: flex;
-  gap: 14px;
-  align-items: flex-start;
-}
+.drb-header { display: flex; gap: 14px; align-items: flex-start; }
+.drb-icon { font-size: 22px; flex-shrink: 0; line-height: 1.4; }
+.drb-icon--spin { animation: drb-spin 2s linear infinite; }
+@keyframes drb-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-.drb-icon {
-  font-size: 22px;
-  flex-shrink: 0;
-  line-height: 1.4;
-}
-
-.drb-icon--spin {
-  animation: drb-spin 2s linear infinite;
-}
-
-@keyframes drb-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-.drb-title {
-  margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--color-seedf-blue, #1a5fa8);
-}
-
-.drb-subtitle {
-  margin: 0;
-  font-size: 13px;
-  color: var(--color-text-secondary, #555);
-  line-height: 1.5;
-}
+.drb-title  { margin: 0 0 4px; font-size: 15px; font-weight: 600; color: var(--blue-700); }
+.drb-subtitle { margin: 0; font-size: 13px; color: var(--gray-600); line-height: 1.5; }
 
 /* ── Lista de candidatos ── */
 .drb-candidates {
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #ddd);
-  border-radius: 8px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
   padding: 12px 16px;
 }
-
 .drb-candidates-label {
   margin: 0 0 8px;
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--color-text-secondary, #666);
+  font-size: 12px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: .04em;
+  color: var(--gray-500);
 }
-
-.drb-candidates-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.drb-candidates-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 
 .drb-candidate-item {
   display: grid;
   grid-template-columns: 1fr auto;
   grid-template-rows: auto auto;
-  column-gap: 12px;
-  row-gap: 2px;
+  column-gap: 12px; row-gap: 2px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--color-border-light, #f0f0f0);
+  border-bottom: 1px solid var(--gray-100);
 }
-
-.drb-candidate-item:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.drb-candidate-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-text-primary, #222);
-  grid-column: 1;
-  grid-row: 1;
-}
-
-.drb-candidate-status {
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-}
-
-.drb-candidate-summary {
-  font-size: 12px;
-  color: var(--color-text-secondary, #666);
-  grid-column: 1 / -1;
-  grid-row: 2;
-  line-height: 1.4;
-}
+.drb-candidate-item:last-child { border-bottom: none; padding-bottom: 0; }
+.drb-candidate-label   { font-size: 13px; font-weight: 500; color: var(--gray-900); grid-column: 1; grid-row: 1; }
+.drb-candidate-status  { font-size: 12px; font-weight: 600; white-space: nowrap; grid-column: 2; grid-row: 1; align-self: center; }
+.drb-candidate-summary { font-size: 12px; color: var(--gray-500); grid-column: 1 / -1; grid-row: 2; line-height: 1.4; }
 
 /* ── Erro ── */
 .drb-error {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 6px;
+  margin: 0; padding: 10px 14px;
+  border-radius: var(--radius-sm);
   font-size: 13px;
-  background: color-mix(in srgb, var(--color-danger, #dc2626) 8%, transparent);
-  color: var(--color-danger, #dc2626);
-  border: 1px solid color-mix(in srgb, var(--color-danger, #dc2626) 30%, transparent);
+  background: var(--red-50); color: var(--red-600); border: 1px solid var(--red-100);
 }
 
 /* ── Ações ── */
-.drb-actions {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-}
+.drb-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 
 .drb-btn-primary,
 .drb-btn-secondary {
   padding: 9px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: opacity 0.15s, background 0.15s;
+  border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 600;
+  cursor: pointer; border: none;
+  transition: opacity .15s, background .15s;
+  font-family: var(--font-body);
 }
+.drb-btn-primary { background: var(--blue-600); color: var(--white); }
+.drb-btn-primary:hover:not(:disabled) { background: var(--blue-700); }
 
-.drb-btn-primary {
-  background: var(--color-seedf-blue, #1a5fa8);
-  color: #fff;
-}
-
-.drb-btn-primary:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--color-seedf-blue, #1a5fa8) 85%, #000);
-}
-
-.drb-btn-secondary {
-  background: transparent;
-  color: var(--color-text-secondary, #555);
-  border: 1.5px solid var(--color-border, #ccc);
-}
-
-.drb-btn-secondary:hover:not(:disabled) {
-  border-color: var(--color-text-secondary, #555);
-}
+.drb-btn-secondary { background: transparent; color: var(--gray-600); border: 1.5px solid var(--gray-300); }
+.drb-btn-secondary:hover:not(:disabled) { border-color: var(--gray-500); color: var(--gray-800); }
 
 .drb-btn-primary:disabled,
-.drb-btn-secondary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
+.drb-btn-secondary:disabled { opacity: .55; cursor: not-allowed; }

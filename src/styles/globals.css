@@ -1,8 +1,11 @@
 /* src/styles/globals.css */
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap');
 
+/* ═══════════════════════════════════════════════════════════════
+   SISTEMA DE VARIÁVEIS SEEDF — MODO CLARO (padrão)
+   ═══════════════════════════════════════════════════════════════ */
 :root {
-  /* Paleta SEEDF */
+  /* ── Paleta SEEDF ── */
   --blue-900: #0a2342;
   --blue-800: #103663;
   --blue-700: #1a4f8a;
@@ -18,16 +21,25 @@
   --gold-100: #fef3c7;
   --gold-50:  #fffbeb;
 
+  --green-700: #15803d;
   --green-600: #166534;
   --green-500: #16a34a;
   --green-100: #dcfce7;
   --green-50:  #f0fdf4;
 
+  --teal-700: #0f766e;
+  --teal-600: #0d9488;
+  --teal-500: #14b8a6;
+  --teal-100: #ccfbf1;
+  --teal-50:  #f0fdfa;
+
+  --amber-700: #b45309;
   --amber-600: #92400e;
   --amber-500: #d97706;
   --amber-100: #fef3c7;
   --amber-50:  #fffbeb;
 
+  --red-700:  #b91c1c;
   --red-600:  #991b1b;
   --red-500:  #dc2626;
   --red-100:  #fee2e2;
@@ -45,7 +57,7 @@
   --gray-50:  #f9fafb;
   --white:    #ffffff;
 
-  /* Semânticos */
+  /* ── Tokens semânticos de status ── */
   --color-critical:    var(--red-500);
   --color-critical-bg: var(--red-50);
   --color-critical-bd: var(--red-100);
@@ -58,11 +70,52 @@
   --color-adequate-bg: var(--green-50);
   --color-adequate-bd: var(--green-100);
 
+  /* Novo status adequate_implicit */
+  --color-adequate-implicit:    var(--teal-600);
+  --color-adequate-implicit-bg: var(--teal-50);
+  --color-adequate-implicit-bd: var(--teal-100);
+
   --color-overridden:    var(--blue-600);
   --color-overridden-bg: var(--blue-50);
   --color-overridden-bd: var(--blue-100);
 
-  /* Layout */
+  /* ── Bridge: aliases para componentes gerados externamente ── */
+  /* Permite que DocumentViewer, DeepReviewBanner etc. usem
+     vars do sistema Anthropic sem quebrar */
+  --color-seedf-blue:      var(--blue-600);
+  --color-surface:         var(--white);
+  --color-border:          var(--gray-300);
+  --color-border-light:    var(--gray-200);
+  --color-warning:         var(--amber-500);
+  --color-danger:          var(--red-500);
+  --color-success:         var(--green-500);
+
+  /* Anthropic token aliases → SEEDF */
+  --color-background-primary:   var(--white);
+  --color-background-secondary: var(--gray-50);
+  --color-background-tertiary:  var(--gray-100);
+  --color-background-info:      var(--blue-50);
+  --color-background-danger:    var(--red-50);
+  --color-background-success:   var(--green-50);
+  --color-background-warning:   var(--amber-50);
+
+  --color-text-primary:   var(--gray-900);
+  --color-text-secondary: var(--gray-600);
+  --color-text-tertiary:  var(--gray-400);
+  --color-text-info:      var(--blue-600);
+  --color-text-danger:    var(--red-600);
+  --color-text-success:   var(--green-600);
+  --color-text-warning:   var(--amber-600);
+
+  --color-border-tertiary:  var(--gray-200);
+  --color-border-secondary: var(--gray-300);
+  --color-border-primary:   var(--gray-400);
+
+  --border-radius-md: var(--radius-md);
+  --border-radius-lg: var(--radius-lg);
+  --border-radius-xl: var(--radius-xl);
+
+  /* ── Layout ── */
   --sidebar-w: 256px;
   --header-h:  56px;
   --radius-sm: 6px;
@@ -70,16 +123,83 @@
   --radius-lg: 14px;
   --radius-xl: 20px;
 
-  /* Sombras */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,.08);
-  --shadow-md:  0 4px 12px rgba(0,0,0,.10);
-  --shadow-lg:  0 8px 24px rgba(0,0,0,.12);
+  /* ── Sombras ── */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.10);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,.12);
 
-  /* Tipografia */
+  /* ── Tipografia ── */
   --font-display: 'Sora', sans-serif;
   --font-body:    'DM Sans', sans-serif;
+  --font-sans:    'DM Sans', sans-serif;
+  --font-mono:    'Courier New', monospace;
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   MODO ESCURO — inverte tokens semânticos centralmente
+   Todos os componentes que usam variáveis SEEDF invertem
+   automaticamente sem precisar de .dark em cada arquivo
+   ═══════════════════════════════════════════════════════════════ */
+html.dark {
+  /* Superfícies — inverte a hierarquia de luminosidade */
+  --white:     #1f2937;   /* fundo de cards */
+  --gray-50:   #243447;   /* fundo de áreas levemente elevadas */
+  --gray-100:  #2d3d52;   /* fundo de hover, badges */
+  --gray-200:  #374151;   /* bordas */
+  --gray-300:  #4b5563;   /* bordas mais visíveis */
+  --gray-400:  #6b7280;   /* texto terciário */
+  --gray-500:  #9ca3af;   /* texto secundário */
+  --gray-600:  #d1d5db;   /* texto secundário forte */
+  --gray-700:  #e5e7eb;   /* texto primário suave */
+  --gray-800:  #f3f4f6;   /* texto primário */
+  --gray-900:  #f9fafb;   /* texto em destaque */
+
+  /* Paleta de cor — levemente mais brilhante para contraste no dark */
+  --blue-50:   #1e3a5f;
+  --blue-100:  #1e4a7a;
+  --blue-400:  #60a5fa;
+  --blue-500:  #3b82f6;
+  --blue-600:  #60a5fa;
+
+  --green-50:  #14532d;
+  --green-100: #166534;
+  --green-500: #4ade80;
+  --green-600: #86efac;
+
+  --teal-50:   #134e4a;
+  --teal-100:  #0f766e;
+  --teal-600:  #2dd4bf;
+
+  --amber-50:  #451a03;
+  --amber-100: #78350f;
+  --amber-500: #fbbf24;
+  --amber-600: #fde68a;
+
+  --red-50:    #450a0a;
+  --red-100:   #7f1d1d;
+  --red-500:   #f87171;
+  --red-600:   #fca5a5;
+
+  --gold-50:   #451a03;
+  --gold-100:  #78350f;
+  --gold-600:  #fde68a;
+
+  /* Background semânticos ajustam automaticamente via vars acima */
+  --color-background-primary:   var(--white);
+  --color-background-secondary: var(--gray-50);
+  --color-background-tertiary:  var(--gray-100);
+
+  --color-text-primary:   var(--gray-900);
+  --color-text-secondary: var(--gray-600);
+  --color-text-tertiary:  var(--gray-400);
+
+  --color-border-tertiary:  var(--gray-200);
+  --color-border-secondary: var(--gray-300);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESET E BASE
+   ═══════════════════════════════════════════════════════════════ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html { font-size: 15px; }
@@ -99,13 +219,15 @@ a:hover { text-decoration: underline; }
 
 button { font-family: var(--font-body); cursor: pointer; }
 
-/* Scrollbar personalizada */
+/* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
 
-/* Animações utilitárias */
+/* ═══════════════════════════════════════════════════════════════
+   ANIMAÇÕES UTILITÁRIAS
+   ═══════════════════════════════════════════════════════════════ */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -119,47 +241,76 @@ button { font-family: var(--font-body); cursor: pointer; }
   70%  { box-shadow: 0 0 0 8px rgba(35,128,224,0); }
   100% { box-shadow: 0 0 0 0 rgba(35,128,224,0); }
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .animate-fade-in  { animation: fadeIn .25s ease both; }
 .animate-slide-in { animation: slideIn .2s ease both; }
 
-/* Adicionar no final do globals.css */
+/* ═══════════════════════════════════════════════════════════════
+   UTILITÁRIOS GLOBAIS (dark mode automático via inversão de vars)
+   ═══════════════════════════════════════════════════════════════ */
 
-/* Ajustes para cards e elementos no dark mode */
-.dark .empty-state {
-  background: var(--gray-50);
-  border-color: var(--gray-300);
-}
-
-.dark .empty-state .empty-icon {
-  color: var(--gray-500);
-}
-
-.dark .empty-state p {
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 48px;
+  background: var(--white);
+  border: 1px dashed var(--gray-300);
+  border-radius: var(--radius-lg);
   color: var(--gray-400);
+  font-size: 13.5px;
 }
+.empty-icon { color: var(--gray-300); }
+.empty-state p { color: var(--gray-500); }
 
-.dark .stage-badge {
+/* Badges de etapas */
+.stage-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
   background: var(--gray-100);
-  color: var(--gray-400);
+  color: var(--gray-600);
+  white-space: nowrap;
+}
+.stage-badge.more  { background: var(--blue-50);  color: var(--blue-600); }
+.stage-badge.full  { background: var(--blue-50);  color: var(--blue-700); }
+
+/* Stat badges */
+.stat-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.stat-badge.critical  { background: var(--red-50);   color: var(--red-600); }
+.stat-badge.attention { background: var(--amber-50); color: var(--amber-600); }
+.stat-badge.adequate  { background: var(--green-50); color: var(--green-600); }
+
+/* Loader */
+.page-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+}
+.spinner {
+  width: 32px; height: 32px;
+  border: 3px solid var(--gray-200);
+  border-top-color: var(--blue-500);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
 }
 
-.dark .stage-badge.more {
-  background: var(--blue-50);
-  color: var(--blue-400);
-}
-
-.dark .stat-badge.critical {
-  background: var(--red-50);
-  color: var(--red-400);
-}
-
-.dark .stat-badge.attention {
-  background: var(--amber-50);
-  color: var(--amber-400);
-}
-
-.dark .stat-badge.adequate {
-  background: var(--green-50);
-  color: var(--green-400);
+/* Badge badge de status implícito (novo) */
+.implicit-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--color-adequate-implicit-bg);
+  color: var(--color-adequate-implicit);
+  border: 1px solid var(--color-adequate-implicit-bd);
+  padding: 1px 7px;
+  border-radius: 10px;
 }

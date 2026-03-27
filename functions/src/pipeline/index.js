@@ -1,9 +1,8 @@
 /**
  * pipeline/index.js
  * Cloud Function (2nd gen) — disparada por upload no Cloud Storage
- * Orquestra as etapas do pipeline de análise de PPP
  *
- * Fase 1 (automática): extração → seções → Haiku → grava resultados
+ * Fase 1 (automática): extração → HTML docx → seções → Haiku → highlights → grava
  *   → status: 'haiku_complete', lista deepCandidates no doc de análise
  * Fase 2 (sob demanda): usuário confirma → triggerDeepReview (deepReview.js)
  */
@@ -12,33 +11,34 @@ const { defineSecret } = require('firebase-functions/params')
 const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY')
 
 const { onObjectFinalized } = require('firebase-functions/v2/storage')
-const { getFirestore, FieldValue, Timestamp } = require('firebase-admin/firestore')
+const { getFirestore, Timestamp } = require('firebase-admin/firestore')
 const { getStorage } = require('firebase-admin/storage')
-const { extractText } = require('./extractor')
-const { detectSections } = require('./sectionDetector')
+const { extractText }        = require('./extractor')
+const { detectSections }     = require('./sectionDetector')
 const { analyzeAllElements } = require('./elementAnalyzer')
-const { runComparison } = require('./comparator')
-const { logger } = require('firebase-functions')
+const { runComparison }      = require('./comparator')
+const { injectHighlights }   = require('./docxHighlighter')
+const { loadModeOverrides }  = require('./feedbackAggregator')
+const { logger }             = require('firebase-functions')
 
 const db = getFirestore()
 
 // ─── Trigger ──────────────────────────────────────────────────────────────────
-exports.triggerDeepReview = require('./pipeline/deepReview').triggerDeepReview
 
 exports.onPPPUploaded = onObjectFinalized(
   {
-    region: 'southamerica-east1',
+    region:         'southamerica-east1',
     timeoutSeconds: 540,
-    memory: '1GiB',
-    concurrency: 10,
-    secrets: [ANTHROPIC_API_KEY],
+    memory:         '1GiB',
+    concurrency:    10,
+    secrets:        [ANTHROPIC_API_KEY],
   },
   async (event) => {
     const filePath    = event.data.name
     const contentType = event.data.contentType
 
     if (!filePath.startsWith('analyses/')) return
-    if (!isDocumentFile(contentType)) return
+    if (!isDocumentFile(contentType))       return
 
     const segments   = filePath.split('/')
     const analysisId = segments[1]
@@ -48,7 +48,7 @@ exports.onPPPUploaded = onObjectFinalized(
     const analysisRef = db.collection('analyses').doc(analysisId)
 
     try {
-      // ── 1. Lê dados da análise e escola ─────────────────────────────────────
+      // ── 1. Lê dados da análise e escola ──────────────────────────────────────
       const analysisSnap = await analysisRef.get()
       if (!analysisSnap.exists) throw new Error(`Análise ${analysisId} não encontrada`)
       const analysis = analysisSnap.data()
@@ -59,40 +59,58 @@ exports.onPPPUploaded = onObjectFinalized(
 
       await analysisRef.update({ 'aiAnalysis.status': 'extracting', updatedAt: Timestamp.now() })
 
-      // ── 2. Extração de texto ─────────────────────────────────────────────────
+      // ── 2. Extração de texto (+ HTML para .docx) ──────────────────────────────
       const bucket = getStorage().bucket(event.data.bucket)
       const file   = bucket.file(filePath)
       const [buffer] = await file.download()
 
-      const { text: fullText, method, pageCount } = await extractText(buffer, contentType)
+      const {
+        text: fullText,
+        method,
+        pageCount,
+        fileType,
+        htmlStoragePath,
+      } = await extractText(buffer, contentType, fileName, analysisId, event.data.bucket)
+
       await analysisRef.update({ 'aiAnalysis.status': 'analyzing', updatedAt: Timestamp.now() })
 
-      // ── 3. Detecção de seções ────────────────────────────────────────────────
+      // ── 3. Detecção de seções ─────────────────────────────────────────────────
       const sectionMap = detectSections(fullText)
 
-      // ── 4. Carrega checklist e filtra por escola ─────────────────────────────
+      // ── 4. Carrega checklist e filtra por escola ──────────────────────────────
       const allElements = await getChecklistDefinitions()
       const applicable  = filterBySchoolStages(allElements, school.stages || {})
 
-      // ── 5. Análise Haiku (lote por bloco) ────────────────────────────────────
+      // ── 5. Carrega overrides de modo (feedbackAggregator) ─────────────────────
+      const modeOverrides = await loadModeOverrides()
+
+      // ── 6. Análise Haiku (lote por bloco) ─────────────────────────────────────
       const { results, deepCandidates } = await analyzeAllElements({
         elements: applicable,
         sectionMap,
         fullText,
         school,
         analysisId,
-        year: pppYear,
+        year:         pppYear,
+        modeOverrides,
       })
 
-      // ── 6. Grava resultados no Firestore ─────────────────────────────────────
+      // ── 7. Grava resultados no Firestore ──────────────────────────────────────
       await saveElementResults(analysisId, results)
 
-      // ── 7. Comparação com ano anterior (se existir) ──────────────────────────
+      // ── 8. Injeta highlights no HTML do docx (apenas .docx) ───────────────────
+      if (fileType === 'docx' && htmlStoragePath) {
+        try {
+          await injectHighlights(analysisId, event.data.bucket, results)
+        } catch (hlErr) {
+          logger.warn(`Falha ao injetar highlights`, { analysisId, error: hlErr.message })
+        }
+      }
+
+      // ── 9. Comparação com ano anterior (se existir) ───────────────────────────
       await runComparison(analysisId, results)
 
-      // ── 8. Atualiza status — haiku_complete ───────────────────────────────────
-      //    deepCandidates: IDs dos elementos críticos com score baixo
-      //    O frontend detecta este status e exibe o banner de confirmação
+      // ── 10. Atualiza status — haiku_complete ──────────────────────────────────
       const stats = computeStats(results)
 
       await analysisRef.update({
@@ -103,12 +121,14 @@ exports.onPPPUploaded = onObjectFinalized(
         'aiAnalysis.deepReviewDone':   false,
         'aiAnalysis.method':           method,
         'aiAnalysis.pageCount':        pageCount,
+        'aiAnalysis.fileType':         fileType,
+        'aiAnalysis.htmlStoragePath':  htmlStoragePath || null,
         [`${pppYear === 2026 ? 'ppp2026' : 'ppp2025'}.extractedText`]: true,
         stats,
         updatedAt: Timestamp.now(),
       })
 
-      // ── 9. Log de auditoria ──────────────────────────────────────────────────
+      // ── 11. Log de auditoria ──────────────────────────────────────────────────
       await db.collection('audit_log').add({
         action:     'haiku_analysis_complete',
         analysisId,
@@ -116,25 +136,29 @@ exports.onPPPUploaded = onObjectFinalized(
         userId:     'system',
         elementId:  null,
         before:     null,
-        after:      {
+        after: {
           status:         'haiku_complete',
           elementCount:   applicable.length,
           deepCandidates: deepCandidates.length,
+          fileType,
+          hasHighlights:  !!htmlStoragePath,
         },
-        metadata:   { method, pageCount, pppYear },
-        timestamp:  Timestamp.now(),
+        metadata:  { method, pageCount, pppYear },
+        timestamp: Timestamp.now(),
       })
 
       logger.info(`Fase 1 (Haiku) concluída`, {
         analysisId,
-        elements: applicable.length,
+        elements:       applicable.length,
         deepCandidates: deepCandidates.length,
+        fileType,
+        hasHighlights:  !!htmlStoragePath,
       })
 
     } catch (err) {
       logger.error(`Erro no pipeline`, { analysisId, error: err.message })
       await analysisRef.update({
-        'aiAnalysis.error': err.message,
+        'aiAnalysis.error':  err.message,
         'aiAnalysis.status': 'error',
         'aiAnalysis.ranAt':  Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -173,7 +197,7 @@ function filterBySchoolStages(elements, stages) {
 }
 
 async function saveElementResults(analysisId, results) {
-  const ref = db.collection('analyses').doc(analysisId).collection('elementResults')
+  const ref        = db.collection('analyses').doc(analysisId).collection('elementResults')
   const BATCH_SIZE = 500
 
   for (let i = 0; i < results.length; i += BATCH_SIZE) {

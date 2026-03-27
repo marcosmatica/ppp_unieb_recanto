@@ -135,12 +135,12 @@
   padding: 1px 6px;
 }
 
-/* ── Review main ─────────────────────────────────────────────────── */
+/* Substitua .review-main */
 .review-main {
   flex: 1;
-  display: flex;
+  display: grid;
+  grid-template-columns: 220px 1fr 360px;
   overflow: hidden;
-  gap: 0;
 }
 
 /* ── Elements sidebar ─────────────────────────────────────────────── */
