@@ -29,7 +29,7 @@ exports.getDocumentViewerUrl = onCall(
 
     const analysis  = snap.data()
     const fileType  = analysis.aiAnalysis?.fileType || null
-    const bucket    = process.env.FIREBASE_STORAGE_BUCKET || ''
+    const bucket = getStorage().bucket().name
 
     if (fileType !== 'docx') {
       return { htmlUrl: null, fileType }
@@ -74,3 +74,4 @@ exports.getDocumentViewerUrl = onCall(
     }
   }
 )
+ 

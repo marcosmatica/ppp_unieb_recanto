@@ -79,14 +79,24 @@ export default function DocumentViewer({ analysisId, activeElement, onMarkClick 
     return () => window.removeEventListener('message', handler)
   }, [onMarkClick])
 
-  // ── Envia postMessage ao iframe quando muda o elemento ativo ───────────────
+  // Substitua o useEffect que envia postMessage:
   useEffect(() => {
-    if (!iframeReady || !iframeRef.current) return
-    iframeRef.current.contentWindow?.postMessage({
-      type:      'HIGHLIGHT_ELEMENT',
-      elementId: activeElement?.elementId || null,
-    }, '*')
-  }, [activeElement, iframeReady])
+    if (!iframeRef.current) return
+    const send = () => {
+      iframeRef.current?.contentWindow?.postMessage({
+        type:      'HIGHLIGHT_ELEMENT',
+        elementId: activeElement?.elementId || null,
+      }, '*')
+    }
+    if (iframeReady) {
+      send()
+    }
+    // Se o iframe ainda não está pronto, agenda um retry
+    else if (htmlUrl) {
+      const timer = setTimeout(send, 800)
+      return () => clearTimeout(timer)
+    }
+  }, [activeElement, iframeReady, htmlUrl])
 
   // ── Collapsed ───────────────────────────────────────────────────────────────
   if (collapsed) {
@@ -134,7 +144,16 @@ export default function DocumentViewer({ analysisId, activeElement, onMarkClick 
             className="dv-iframe"
             sandbox="allow-scripts allow-same-origin"
             title="Documento PPP"
-            onLoad={() => setTimeout(() => setIframeReady(true), 100)}
+            onLoad={() => {
+              setTimeout(() => {
+                setIframeReady(true)
+                // Força highlight do elemento atual após load
+                iframeRef.current?.contentWindow?.postMessage({
+                  type:      'HIGHLIGHT_ELEMENT',
+                  elementId: activeElement?.elementId || null,
+                }, '*')
+              }, 300)
+            }}
           />
           {activeElement && <ActiveElementTag element={activeElement} />}
         </div>

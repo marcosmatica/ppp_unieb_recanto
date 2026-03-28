@@ -204,7 +204,7 @@ async function getHighlightedHtmlUrl(analysisId, bucketName) {
   }
 }
 
-// ─── HTML wrapper ─────────────────────────────────────────────────────────────
+// Substitua a função wrapHtml() em functions/src/pipeline/docxHighlighter.js
 
 function wrapHtml(body, analysisId) {
   return `<!DOCTYPE html>
@@ -214,60 +214,239 @@ function wrapHtml(body, analysisId) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="analysisId" content="${analysisId}">
 <style>
-  * { box-sizing: border-box; }
-  body {
-    font-family: 'Segoe UI', Arial, sans-serif;
-    font-size: 13px; line-height: 1.7;
-    color: #1a1a1a; background: #fff;
-    padding: 32px 40px; max-width: 820px; margin: 0 auto;
-  }
-  h1 { font-size: 18px; font-weight: 700; margin: 24px 0 8px; }
-  h2 { font-size: 15px; font-weight: 600; margin: 20px 0 6px; }
-  h3 { font-size: 13px; font-weight: 600; margin: 16px 0 4px; }
-  p  { margin: 0 0 8px; }
-  ul, ol { margin: 4px 0 8px 20px; }
-  table { border-collapse: collapse; width: 100%; margin: 12px 0; }
-  td, th { border: 1px solid #ddd; padding: 6px 10px; font-size: 12px; }
+  /* ── Reset & base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  mark { border-radius: 3px; padding: 1px 2px; cursor: pointer; transition: opacity 0.15s; }
-  mark:hover { opacity: 0.75; }
-  mark.hl-adequate          { background: #bbf7d0; color: #14532d; border-bottom: 2px solid #16a34a; }
-  mark.hl-adequate-implicit { background: #ccfbf1; color: #134e4a; border-bottom: 2px solid #0d9488; }
-  mark.hl-attention         { background: #fef08a; color: #713f12; border-bottom: 2px solid #ca8a04; }
-  mark.hl-critical          { background: #fecaca; color: #7f1d1d; border-bottom: 2px solid #dc2626; }
-  mark.hl-active            { outline: 2px solid #3b82f6; outline-offset: 2px; }
-  body.has-active mark:not(.hl-active) { opacity: 0.25; }
+  html {
+    background: #e8e8e8;
+    min-height: 100%;
+  }
+
+  body {
+    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-size: 12pt;
+    line-height: 1.8;
+    color: #1a1a1a;
+    background: #e8e8e8;
+    padding: 24px 16px 48px;
+  }
+
+  /* ── Simulação de folha A4 ── */
+  .page-wrapper {
+    max-width: 820px;
+    margin: 0 auto;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
+    border-radius: 2px;
+    padding: 72px 90px 80px;   /* margens A4: ~2.5cm laterais */
+  }
+
+  /* ── Tipografia ── */
+  h1 {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 28px 0 10px;
+    line-height: 1.3;
+    page-break-after: avoid;
+  }
+  h2 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #1a1a2e;
+    margin: 22px 0 8px;
+    line-height: 1.35;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 12pt;
+    font-weight: 600;
+    color: #2c2c3e;
+    margin: 18px 0 6px;
+    line-height: 1.4;
+  }
+  h4, h5, h6 {
+    font-size: 12pt;
+    font-weight: 600;
+    margin: 14px 0 4px;
+  }
+
+  p {
+    margin: 0 0 10px;
+    text-align: justify;
+    hyphens: auto;
+  }
+  p:last-child { margin-bottom: 0; }
+
+  /* ── Listas ── */
+  ul, ol {
+    margin: 6px 0 10px 24px;
+    padding: 0;
+  }
+  li { margin-bottom: 4px; }
+
+  /* ── Tabelas ── */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    font-size: 11pt;
+  }
+  td, th {
+    border: 1px solid #c8c8c8;
+    padding: 6px 10px;
+    vertical-align: top;
+  }
+  th {
+    background: #f0f0f0;
+    font-weight: 600;
+    text-align: left;
+  }
+  tr:nth-child(even) td { background: #fafafa; }
+
+  /* ── Imagens ── */
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 12px auto;
+  }
+
+  /* ── Links ── */
+  a { color: #1155cc; text-decoration: underline; }
+
+  /* ── Separadores ── */
+  hr {
+    border: none;
+    border-top: 1px solid #d0d0d0;
+    margin: 20px 0;
+  }
+
+  /* ── Highlights por status ── */
+  mark {
+    border-radius: 2px;
+    padding: 1px 3px;
+    cursor: pointer;
+    transition: opacity 0.15s, box-shadow 0.15s;
+    text-decoration: none;
+  }
+  mark:hover {
+    box-shadow: 0 0 0 2px rgba(0,0,0,.15);
+  }
+  mark.hl-adequate {
+    background: #bbf7d0;
+    color: #14532d;
+    border-bottom: 2px solid #16a34a;
+  }
+  mark.hl-adequate-implicit {
+    background: #ccfbf1;
+    color: #134e4a;
+    border-bottom: 2px solid #0d9488;
+  }
+  mark.hl-attention {
+    background: #fef08a;
+    color: #713f12;
+    border-bottom: 2px solid #ca8a04;
+  }
+  mark.hl-critical {
+    background: #fecaca;
+    color: #7f1d1d;
+    border-bottom: 2px solid #dc2626;
+  }
+
+  /* ── Mark ativo (selecionado no checklist) ── */
+  mark.hl-active {
+    outline: 2.5px solid #3b82f6;
+    outline-offset: 1px;
+    box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+  }
+
+  /* ── Fade dos marks não ativos ── */
+  body.has-active mark:not(.hl-active) {
+    opacity: 0.2;
+    transition: opacity 0.2s;
+  }
+
+  /* ── Legenda de highlights (rodapé fixo) ── */
+  .hl-legend {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 6px 20px;
+    background: rgba(255,255,255,.95);
+    border-top: 1px solid #e0e0e0;
+    font-size: 10pt;
+    color: #555;
+    backdrop-filter: blur(4px);
+    z-index: 100;
+  }
+  .hl-legend span {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .hl-dot {
+    width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+  }
+  .hl-dot.adequate          { background: #16a34a; }
+  .hl-dot.adequate-implicit { background: #0d9488; }
+  .hl-dot.attention         { background: #ca8a04; }
+  .hl-dot.critical          { background: #dc2626; }
 </style>
 </head>
 <body>
+<div class="page-wrapper">
 ${body}
+</div>
+
+<!-- Legenda de highlights -->
+<div class="hl-legend">
+  <strong>Trechos analisados:</strong>
+  <span><div class="hl-dot adequate"></div> Adequado</span>
+  <span><div class="hl-dot adequate-implicit"></div> Implícito</span>
+  <span><div class="hl-dot attention"></div> Atenção</span>
+  <span><div class="hl-dot critical"></div> Crítico</span>
+</div>
+
 <script>
+  // Sinaliza prontidão ao pai
   window.addEventListener('DOMContentLoaded', () => {
     window.parent.postMessage({ type: 'IFRAME_READY' }, '*')
   })
 
+  // Recebe HIGHLIGHT_ELEMENT do pai
   window.addEventListener('message', (e) => {
     const { type, elementId } = e.data || {}
     if (type !== 'HIGHLIGHT_ELEMENT') return
+
     document.querySelectorAll('mark.hl-active').forEach(m => m.classList.remove('hl-active'))
     document.body.classList.remove('has-active')
+
     if (!elementId) return
+
     const marks = document.querySelectorAll(\`mark[data-element="\${elementId}"]\`)
     if (!marks.length) return
+
     document.body.classList.add('has-active')
     marks.forEach(m => m.classList.add('hl-active'))
     marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
   })
 
+  // Clique num mark → notifica o pai
   document.addEventListener('click', (e) => {
     const mark = e.target.closest('mark[data-element]')
     if (!mark) return
+
     document.querySelectorAll('mark.hl-active').forEach(m => m.classList.remove('hl-active'))
     document.body.classList.add('has-active')
-    document.querySelectorAll(\`mark[data-element="\${mark.dataset.element}"]\`).forEach(m => m.classList.add('hl-active'))
+    document.querySelectorAll(\`mark[data-element="\${mark.dataset.element}"]\`)
+      .forEach(m => m.classList.add('hl-active'))
+
     window.parent.postMessage({
-      type: 'MARK_CLICKED', elementId: mark.dataset.element,
-      label: mark.dataset.label || '', status: mark.dataset.status || '',
+      type:      'MARK_CLICKED',
+      elementId: mark.dataset.element,
+      label:     mark.dataset.label  || '',
+      status:    mark.dataset.status || '',
     }, '*')
   })
 </script>
