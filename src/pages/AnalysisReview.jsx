@@ -310,7 +310,7 @@ export default function AnalysisReview() {
 
   const [drawerW, onDrawerDrag, drawerDragging] = useColResize('drawer', COL_DEFAULTS.drawer)
   const [cardW,   onCardDrag,   cardDragging]   = useColResize('card',   COL_DEFAULTS.card)
-
+  const iframeSendRef = useRef(null)
   const aiStatus     = analysis?.aiAnalysis?.status
   const isProcessing = analysis !== null && ['pending', 'extracting', 'analyzing'].includes(aiStatus)
   const isReady      = analysis !== null && ['haiku_complete', 'complete'].includes(aiStatus)
@@ -366,6 +366,11 @@ export default function AnalysisReview() {
     handleSelectElement(blockCode, elementId)
     setMarkPopover({ elementId })
   }, [handleSelectElement])
+
+  const scrollToExcerpt = useCallback((excerptText) => {
+    if (!iframeSendRef.current || !excerptText) return
+    iframeSendRef.current({ type: 'SCROLL_TO_TEXT', text: excerptText })
+  }, [])
 
   const closeMarkPopover = useCallback(() => setMarkPopover(null), [])
 
@@ -509,6 +514,7 @@ export default function AnalysisReview() {
             activeElement={currentElement}
             onMarkClick={handleMarkClick}
             hideExcerpts={true}
+            onIframeReady={(sendFn) => { iframeSendRef.current = sendFn }}
           />
           {markPopover && popoverElement && (
             <MarkPopover
@@ -542,6 +548,7 @@ export default function AnalysisReview() {
               hasPrev={hasPrevGlobal}
               hasNext={hasNextGlobal}
               position={globalPos}
+              onExcerptClick={(idx) => scrollToExcerpt(currentElement?.aiResult?.excerpts?.[idx]?.text)}
             />
           </div>
         ) : (
@@ -595,111 +602,117 @@ function MarkPopover({ element: el, onClose, onNavigate }) {
 
 // ─── ElementCard ──────────────────────────────────────────────────────────────
 
+// Substitua o componente ElementCard inteiro no final de
+// src/pages/AnalysisReview.jsx por este bloco completo.
+// Nada mais no arquivo precisa mudar.
+
 function ElementCard({
-  element: el, checklistMap,
-  submitting, comment, setComment, showComment, setShowComment,
-  onAgree, onDisagree, onSkip, onPrev, onNext, hasPrev, hasNext, position,
-}) {
+                       element: el, checklistMap,
+                       submitting, comment, setComment, showComment, setShowComment,
+                       onAgree, onOverride, onSkip, onPrev, onNext, hasPrev, hasNext, position,
+                     }) {
   const cfg    = STATUS_CONFIG[el.effectiveStatus] || STATUS_CONFIG.adequate
   const aiCfg  = STATUS_CONFIG[el.aiResult?.status] || STATUS_CONFIG.adequate
   const Icon   = cfg.icon
   const AiIcon = aiCfg.icon
   const reviewed = el.humanReview?.status !== 'pending'
 
+  // Status da IA (antes de qualquer revisão humana) — passado ao ReviewActions
+  const aiStatus = el.aiResult?.status || 'adequate'
+
   return (
-    <div className="element-card animate-fade-in" style={{ borderTopColor: cfg.borderColor }}>
+      <div className="element-card animate-fade-in" style={{ borderTopColor: cfg.borderColor }}>
 
-      <div className="ec-top">
-        <div className="ec-badges">
-          <span className={`status-pill status-${cfg.color}`}><Icon size={13} /> {cfg.label}</span>
-          {el.isNewIn2026 && <span className="new-badge">NOVO 2026</span>}
-          {el.isCritical  && <span className="critical-badge">Obrigatório</span>}
-          {reviewed && el.humanReview?.status !== 'skipped' && <span className="reviewed-badge">Revisado</span>}
-        </div>
-        <div className="ec-nav-row">
-          <button className={`ec-nav-btn${!hasPrev ? ' muted' : ''}`} onClick={onPrev} disabled={!hasPrev}><ChevronLeft size={14} /></button>
-          <span className="ec-nav-pos">{position}</span>
-          <button className={`ec-nav-btn${!hasNext ? ' muted' : ''}`} onClick={onNext} disabled={!hasNext}><ChevronRight size={14} /></button>
-        </div>
-      </div>
-
-      <h2 className="ec-title">{el.label}</h2>
-      {checklistMap[el.elementId]?.normRef && (
-        <p className="ec-normref">{checklistMap[el.elementId].normRef}</p>
-      )}
-
-      {el.aiResult && (
-        <div className={`ec-ai-block ai-${aiCfg.color}`}>
-          <div className="ec-ai-header">
-            <AiIcon size={13} /> Análise da IA
-            {el.aiResult.confidence != null && (
-              <span className="ai-score">{Math.round(el.aiResult.confidence * 100)}% confiança</span>
-            )}
+        {/* ── Topo: badges + navegação ── */}
+        <div className="ec-top">
+          <div className="ec-badges">
+            <span className={`status-pill status-${cfg.color}`}><Icon size={13} /> {cfg.label}</span>
+            {el.isNewIn2026 && <span className="new-badge">NOVO 2026</span>}
+            {el.isCritical  && <span className="critical-badge">Obrigatório</span>}
+            {reviewed && el.humanReview?.status === 'confirmed'  && <span className="reviewed-badge">✓ Confirmado</span>}
+            {reviewed && el.humanReview?.status === 'overridden' && <span className="overridden-badge">✎ Revisado</span>}
+            {reviewed && el.humanReview?.status === 'skipped'    && <span className="skipped-badge">→ Pulado</span>}
           </div>
-          {el.aiResult.summary && <p className="ec-ai-summary">{el.aiResult.summary}</p>}
-          {el.aiResult.missingRefs?.length > 0 && (
-            <div className="ec-missing-refs">
-              <AlertCircle size={13} />
-              <span>Ausente: {el.aiResult.missingRefs.join(', ')}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {el.aiResult?.excerpts?.length > 0 && (
-        <div className="ec-excerpts-block">
-          <p className="ec-excerpts-label">Trechos localizados no documento</p>
-          <ExcerptCards
-            excerpts={el.aiResult.excerpts}
-            keywords={el._keywords || []}
-            status={el.effectiveStatus}
-          />
-        </div>
-      )}
-
-      {el.humanReview?.comment && (
-        <div className="ec-analyst-comment">
-          <MessageSquare size={13} />
-          <span>{el.humanReview.comment}</span>
-        </div>
-      )}
-
-      {!reviewed && (
-        <div className="ec-actions">
-          <button className="btn-agree" onClick={onAgree} disabled={submitting}>
-            <ThumbsUp size={13} /> Confirmar análise da IA
-          </button>
-          <button className="btn-disagree" onClick={onDisagree} disabled={submitting}>
-            <ThumbsDown size={13} /> Discordar — elemento adequado
-          </button>
-          <div className="ec-secondary-actions">
-            {!showComment ? (
-              <button className="btn-ghost" onClick={() => setShowComment(true)}>
-                <MessageSquare size={13} /> Adicionar comentário
-              </button>
-            ) : (
-              <div className="comment-box">
-                <textarea
-                  value={comment}
-                  onChange={e => setComment(e.target.value)}
-                  placeholder="Observação opcional..."
-                  rows={3}
-                />
-              </div>
-            )}
-            <button className="btn-ghost" onClick={onSkip}>
-              <SkipForward size={13} /> Pular
+          <div className="ec-nav-row">
+            <button className={`ec-nav-btn${!hasPrev ? ' muted' : ''}`} onClick={onPrev} disabled={!hasPrev}>
+              <ChevronLeft size={14} />
+            </button>
+            <span className="ec-nav-pos">{position}</span>
+            <button className={`ec-nav-btn${!hasNext ? ' muted' : ''}`} onClick={onNext} disabled={!hasNext}>
+              <ChevronRight size={14} />
             </button>
           </div>
         </div>
-      )}
 
-      {reviewed && (
-        <div className="ec-nav">
-          <button className={`btn-ghost${!hasPrev ? ' muted' : ''}`} onClick={onPrev} disabled={!hasPrev}>← Anterior</button>
-          <button className={`btn-ghost${!hasNext ? ' muted' : ''}`} onClick={onNext} disabled={!hasNext}>Próximo →</button>
-        </div>
-      )}
-    </div>
+        {/* ── Título e referência normativa ── */}
+        <h2 className="ec-title">{el.label}</h2>
+        {checklistMap[el.elementId]?.normRef && (
+            <p className="ec-normref">{checklistMap[el.elementId].normRef}</p>
+        )}
+
+        {/* ── Bloco de análise da IA ── */}
+        {el.aiResult && (
+            <div className={`ec-ai-block ai-${aiCfg.color}`}>
+              <div className="ec-ai-header">
+                <AiIcon size={13} /> Análise da IA
+                {el.aiResult.score != null && (
+                    <span className="ai-score">{Math.round(el.aiResult.score * 100)}% score</span>
+                )}
+              </div>
+              {el.aiResult.summary && <p className="ec-ai-summary">{el.aiResult.summary}</p>}
+              {el.aiResult.missingRefs?.length > 0 && (
+                  <div className="ec-missing-refs">
+                    <AlertCircle size={13} />
+                    <span>Ausente: {el.aiResult.missingRefs.join(', ')}</span>
+                  </div>
+              )}
+            </div>
+        )}
+
+        {/* ── Trechos localizados ── */}
+        {el.aiResult?.excerpts?.length > 0 && (
+            <div className="ec-excerpts-block">
+              <p className="ec-excerpts-label">Trechos localizados no documento</p>
+              <ExcerptCards
+                  excerpts={el.aiResult.excerpts}
+                  keywords={el._keywords || []}
+                  status={el.effectiveStatus}
+                  onExcerptClick={onExcerptClick}
+              />
+            </div>
+        )}
+
+        {/* ── Comentário já salvo do analista ── */}
+        {el.humanReview?.comment && (
+            <div className="ec-analyst-comment">
+              <MessageSquare size={13} />
+              <span>{el.humanReview.comment}</span>
+            </div>
+        )}
+
+        {/* ── Ações: ReviewActions (pendente) ou nav (revisado) ── */}
+        {!reviewed ? (
+            <ReviewActions
+                aiStatus={aiStatus}
+                submitting={submitting}
+                comment={comment}
+                setComment={setComment}
+                showComment={showComment}
+                setShowComment={setShowComment}
+                onAgree={onAgree}
+                onOverride={onOverride}
+                onSkip={onSkip}
+            />
+        ) : (
+            <div className="ec-nav">
+              <button className={`btn-ghost${!hasPrev ? ' muted' : ''}`} onClick={onPrev} disabled={!hasPrev}>
+                ← Anterior
+              </button>
+              <button className={`btn-ghost${!hasNext ? ' muted' : ''}`} onClick={onNext} disabled={!hasNext}>
+                Próximo →
+              </button>
+            </div>
+        )}
+      </div>
   )
 }

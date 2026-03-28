@@ -571,7 +571,18 @@ function wrapHtml(body, analysisId) {
   .hl-dot.adequate-implicit { background: var(--hl-implicit-bd); }
   .hl-dot.attention         { background: var(--hl-attention-bd); }
   .hl-dot.critical          { background: var(--hl-critical-bd); }
- 
+    
+    .hl-scroll-target {
+    outline: 3px solid #f59e0b !important;
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgba(245,158,11,.25) !important;
+    animation: scroll-pulse 1.8s ease-out forwards;
+  }
+  @keyframes scroll-pulse {
+    0%   { box-shadow: 0 0 0 8px rgba(245,158,11,.40); outline-color: #f59e0b; }
+    70%  { box-shadow: 0 0 0 6px rgba(245,158,11,.20); outline-color: #f59e0b; }
+    100% { box-shadow: 0 0 0 0px rgba(245,158,11,.0);  outline-color: transparent; }
+  }
 </style>
 </head>
 <body>
@@ -622,7 +633,48 @@ ${body}
       return
     }
  
-    // Highlight de elemento
+    if (type === 'SCROLL_TO_TEXT') {
+      const searchText = e.data.text
+      if (!searchText) return
+ 
+      // Remove pulso anterior
+      document.querySelectorAll('.hl-scroll-target').forEach(m => {
+        m.classList.remove('hl-scroll-target')
+      })
+ 
+      const needle = searchText.slice(0, 80).toLowerCase().trim()
+      let target = null
+ 
+      // 1. Tenta encontrar em marks já destacados
+      const allMarks = document.querySelectorAll('mark[data-element]')
+      for (const m of allMarks) {
+        if (m.textContent.toLowerCase().includes(needle)) {
+          target = m
+          break
+        }
+      }
+ 
+      // 2. Fallback: busca em qualquer nó de texto
+      if (!target) {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+        let node
+        while ((node = walker.nextNode())) {
+          if (node.textContent.toLowerCase().includes(needle)) {
+            target = node.parentElement
+            break
+          }
+        }
+      }
+ 
+      if (target) {
+        target.classList.add('hl-scroll-target')
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Remove a classe após a animação
+        setTimeout(() => target.classList.remove('hl-scroll-target'), 2000)
+      }
+      return
+    }
+ 
     if (type !== 'HIGHLIGHT_ELEMENT') return
  
     document.querySelectorAll('mark.hl-active').forEach(m => m.classList.remove('hl-active'))
