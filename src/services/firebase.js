@@ -113,6 +113,13 @@ export const analysesService = {
 // ─── Element Results ─────────────────────────────────────────────────────────
 
 export const elementResultsService = {
+
+  async submitHumanReview(analysisId, elementId, { decision, overrideStatus, comment, reviewerId }) {
+    const fn = httpsCallable(functions, 'submitHumanReview')
+    return fn({ analysisId, elementId, decision, overrideStatus: overrideStatus || null, comment })
+  },
+
+
   async getAll(analysisId) {
     const snap = await getDocs(
       collection(db, 'analyses', analysisId, 'elementResults')
