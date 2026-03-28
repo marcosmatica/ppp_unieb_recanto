@@ -23,6 +23,7 @@ const { aggregateFeedback } = require('./pipeline/feedbackAggregator')
 
 // Geração do parecer final (.docx)
 const { generateReport } = require('./report/generateReport')
+const { regenerateHighlightedHtml } = require('./report/regenerateHighlightedHtml')
 
 const { getDocumentViewerUrl } = require('./report/getDocumentViewerUrl')
 module.exports = {
@@ -33,4 +34,5 @@ module.exports = {
   aggregateFeedback,
   generateReport,
   getDocumentViewerUrl,
+  regenerateHighlightedHtml,
 }
