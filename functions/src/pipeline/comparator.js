@@ -164,57 +164,85 @@ exports.onElementResultUpdated = onDocumentUpdated(
   }
 )
 
-// ─── Human Review (callable) ─────────────────────────────────────────────────
+// functions/src/pipeline/comparator.js
+// Substitua APENAS a função exports.submitHumanReview pelo código abaixo.
+// O restante do arquivo (runComparison, etc.) permanece intacto.
 
 exports.submitHumanReview = require('firebase-functions/v2/https').onCall(
-  { region: 'southamerica-east1' },
-  async (request) => {
-    const { analysisId, elementId, decision, comment } = request.data
-    const userId = request.auth?.uid
-    if (!userId) throw new Error('Não autenticado')
+    { region: 'southamerica-east1' },
+    async (request) => {
+        const { analysisId, elementId, decision, overrideStatus, comment } = request.data
+        const userId = request.auth?.uid
+        if (!userId) throw new Error('Não autenticado')
 
-    const elementRef = db
-      .collection('analyses').doc(analysisId)
-      .collection('elementResults').doc(elementId)
+        const elementRef = db
+            .collection('analyses').doc(analysisId)
+            .collection('elementResults').doc(elementId)
 
-    const snap = await elementRef.get()
-    if (!snap.exists) throw new Error('Elemento não encontrado')
+        const snap = await elementRef.get()
+        if (!snap.exists) throw new Error('Elemento não encontrado')
 
-    const el = snap.data()
-    const aiStatus = el.aiResult.status
+        const el = snap.data()
+        const aiStatus = el.aiResult.status
 
-    let effectiveStatus, hrStatus
-    if (decision === 'agree') {
-      effectiveStatus = aiStatus
-      hrStatus = 'confirmed'
-    } else if (decision === 'disagree') {
-      effectiveStatus = 'adequate'
-      hrStatus = 'overridden'
-    } else {
-      hrStatus = 'skipped'
-      effectiveStatus = aiStatus
+        let effectiveStatus, hrStatus
+
+        if (decision === 'agree') {
+            // Analista concorda com a IA
+            effectiveStatus = aiStatus
+            hrStatus = 'confirmed'
+
+        } else if (decision === 'override') {
+            // Analista discorda e fornece um status explícito
+            // overrideStatus: 'adequate' | 'attention' | 'critical' | 'not_applicable'
+            const allowed = ['adequate', 'adequate_implicit', 'attention', 'critical', 'not_applicable']
+            if (!overrideStatus || !allowed.includes(overrideStatus)) {
+                throw new Error(`overrideStatus inválido: ${overrideStatus}`)
+            }
+            effectiveStatus = overrideStatus
+            hrStatus = 'overridden'
+
+        } else {
+            // 'skip'
+            hrStatus = 'skipped'
+            effectiveStatus = aiStatus
+        }
+
+        await elementRef.update({
+            'humanReview.status':     hrStatus,
+            'humanReview.decision':   decision,
+            'humanReview.overrideStatus': overrideStatus || null,
+            'humanReview.comment':    comment || null,
+            'humanReview.reviewedAt': Timestamp.now(),
+            'humanReview.reviewedBy': userId,
+            effectiveStatus,
+            updatedAt: Timestamp.now(),
+        })
+
+        await db.collection('audit_log').add({
+            action: 'element_reviewed', analysisId, schoolId: null, userId, elementId,
+            before: { effectiveStatus: el.effectiveStatus, hrStatus: el.humanReview?.status },
+            after:  { effectiveStatus, hrStatus },
+            metadata: { decision, overrideStatus: overrideStatus || null, hasComment: !!comment },
+            timestamp: Timestamp.now(),
+        })
+
+        // Registra discordância no feedback aggregator (para ajuste de modo)
+        if (decision === 'override') {
+            try {
+                const { recordDisagreement } = require('./feedbackAggregator')
+                await recordDisagreement({
+                    elementId,
+                    analysisId,
+                    schoolId: el.schoolId || null,
+                    aiStatus,
+                    year: new Date().getFullYear(),
+                })
+            } catch (_) { /* não bloqueia o fluxo */ }
+        }
+
+        return { success: true, effectiveStatus }
     }
-
-    await elementRef.update({
-      'humanReview.status':     hrStatus,
-      'humanReview.decision':   decision,
-      'humanReview.comment':    comment || null,
-      'humanReview.reviewedAt': Timestamp.now(),
-      'humanReview.reviewedBy': userId,
-      effectiveStatus,
-      updatedAt: Timestamp.now(),
-    })
-
-    await db.collection('audit_log').add({
-      action: 'element_reviewed', analysisId, schoolId: null, userId, elementId,
-      before: { effectiveStatus: el.effectiveStatus, hrStatus: el.humanReview?.status },
-      after:  { effectiveStatus, hrStatus },
-      metadata: { decision, hasComment: !!comment },
-      timestamp: Timestamp.now(),
-    })
-
-    return { success: true, effectiveStatus }
-  }
 )
 
 module.exports.runComparison = runComparison

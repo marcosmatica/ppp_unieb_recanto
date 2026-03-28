@@ -204,8 +204,6 @@ async function getHighlightedHtmlUrl(analysisId, bucketName) {
   }
 }
 
-// Substitua a função wrapHtml() em functions/src/pipeline/docxHighlighter.js
-
 function wrapHtml(body, analysisId) {
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -214,192 +212,373 @@ function wrapHtml(body, analysisId) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="analysisId" content="${analysisId}">
 <style>
-  /* ── Reset & base ── */
+  /* ════════════════════════════════════════════════════════════════
+     BASE — modo claro (padrão)
+     ════════════════════════════════════════════════════════════════ */
+ 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
+ 
+  :root {
+    --page-bg:      #d6d6d6;   /* fundo externo à folha — cinza médio */
+    --sheet-bg:     #ffffff;   /* cor da folha */
+    --text-color:   #1a1a1a;
+    --heading-1:    #0d1b2a;
+    --heading-2:    #0d1b2a;
+    --heading-3:    #1e3050;
+    --table-border: #c0c0c0;
+    --table-header: #f0f0f0;
+    --table-stripe: #fafafa;
+    --hr-color:     #d0d0d0;
+    --link-color:   #1155cc;
+    --legend-bg:    rgba(255,255,255,.96);
+    --legend-border:#e0e0e0;
+    --legend-text:  #555;
+ 
+    /* ── Highlights — modo claro ── */
+    /* Cores saturadas com borda inferior sólida para não sumirem no branco */
+    --hl-adequate-bg:    #bbf7d0;
+    --hl-adequate-text:  #14532d;
+    --hl-adequate-bd:    #16a34a;
+ 
+    --hl-implicit-bg:    #99f6e4;
+    --hl-implicit-text:  #134e4a;
+    --hl-implicit-bd:    #0d9488;
+ 
+    --hl-attention-bg:   #fde68a;
+    --hl-attention-text: #78350f;
+    --hl-attention-bd:   #d97706;
+ 
+    --hl-critical-bg:    #fca5a5;
+    --hl-critical-text:  #7f1d1d;
+    --hl-critical-bd:    #dc2626;
+  }
+ 
+  /* ════════════════════════════════════════════════════════════════
+     DARK MODE — detectado via prefers-color-scheme E via classe
+     .dark injetada pelo pai através de postMessage (ver script).
+     Ambos os mecanismos são suportados.
+     ════════════════════════════════════════════════════════════════ */
+  @media (prefers-color-scheme: dark) { :root { --_dark: 1; } }
+  html.dark { --_dark: 1; }
+ 
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-bg:      #1a1e26;   /* fundo externo — azul-escuro suave, não preto puro */
+      --sheet-bg:     #242a36;   /* folha — cinza-azulado escuro */
+      --text-color:   #d1d5db;
+      --heading-1:    #93c5fd;   /* azul claro — destaca do fundo escuro */
+      --heading-2:    #93c5fd;
+      --heading-3:    #7dd3fc;
+      --table-border: #374151;
+      --table-header: #1f2937;
+      --table-stripe: #1a2030;
+      --hr-color:     #374151;
+      --link-color:   #60a5fa;
+      --legend-bg:    rgba(30,36,48,.97);
+      --legend-border:#374151;
+      --legend-text:  #9ca3af;
+ 
+      /* Highlights — modo escuro: mais saturados, texto claro */
+      --hl-adequate-bg:    #14532d;
+      --hl-adequate-text:  #bbf7d0;
+      --hl-adequate-bd:    #22c55e;
+ 
+      --hl-implicit-bg:    #134e4a;
+      --hl-implicit-text:  #99f6e4;
+      --hl-implicit-bd:    #14b8a6;
+ 
+      --hl-attention-bg:   #78350f;
+      --hl-attention-text: #fde68a;
+      --hl-attention-bd:   #f59e0b;
+ 
+      --hl-critical-bg:    #7f1d1d;
+      --hl-critical-text:  #fca5a5;
+      --hl-critical-bd:    #ef4444;
+    }
+  }
+ 
+  /* Mesma paleta para classe .dark (sincronizada via postMessage) */
+  html.dark {
+    --page-bg:      #1a1e26;
+    --sheet-bg:     #242a36;
+    --text-color:   #d1d5db;
+    --heading-1:    #93c5fd;
+    --heading-2:    #93c5fd;
+    --heading-3:    #7dd3fc;
+    --table-border: #374151;
+    --table-header: #1f2937;
+    --table-stripe: #1a2030;
+    --hr-color:     #374151;
+    --link-color:   #60a5fa;
+    --legend-bg:    rgba(30,36,48,.97);
+    --legend-border:#374151;
+    --legend-text:  #9ca3af;
+ 
+    --hl-adequate-bg:    #14532d;
+    --hl-adequate-text:  #bbf7d0;
+    --hl-adequate-bd:    #22c55e;
+ 
+    --hl-implicit-bg:    #134e4a;
+    --hl-implicit-text:  #99f6e4;
+    --hl-implicit-bd:    #14b8a6;
+ 
+    --hl-attention-bg:   #78350f;
+    --hl-attention-text: #fde68a;
+    --hl-attention-bd:   #f59e0b;
+ 
+    --hl-critical-bg:    #7f1d1d;
+    --hl-critical-text:  #fca5a5;
+    --hl-critical-bd:    #ef4444;
+  }
+ 
+  /* ════════════════════════════════════════════════════════════════
+     LAYOUT
+     ════════════════════════════════════════════════════════════════ */
+ 
   html {
-    background: #e8e8e8;
+    background: var(--page-bg);
     min-height: 100%;
+    transition: background .2s;
   }
-
+ 
   body {
-    font-family: 'Calibri', 'Segoe UI', Arial, sans-serif;
+    font-family: 'Calibri', 'Carlito', 'Segoe UI', Arial, sans-serif;
     font-size: 12pt;
-    line-height: 1.8;
-    color: #1a1a1a;
-    background: #e8e8e8;
-    padding: 24px 16px 48px;
+    line-height: 1.6;
+    color: var(--text-color);
+    background: var(--page-bg);
+    padding: 28px 16px 64px;   /* espaço inferior para a legenda fixa */
+    transition: background .2s, color .2s;
   }
-
-  /* ── Simulação de folha A4 ── */
+ 
+  /* Simulação de folha A4 com sombra */
   .page-wrapper {
-    max-width: 820px;
+    max-width: 794px;           /* 210mm @ 96dpi ≈ 794px */
     margin: 0 auto;
-    background: #ffffff;
-    box-shadow: 0 2px 8px rgba(0,0,0,.18), 0 0 0 1px rgba(0,0,0,.06);
+    background: var(--sheet-bg);
+    box-shadow:
+      0 1px 3px rgba(0,0,0,.12),
+      0 4px 16px rgba(0,0,0,.18),
+      0 0 0 1px rgba(0,0,0,.06);
     border-radius: 2px;
-    padding: 72px 90px 80px;   /* margens A4: ~2.5cm laterais */
+    padding: 96px 108px 96px;   /* ABNT: margens sup/inf 3cm, lat 3cm/2cm */
+    transition: background .2s, box-shadow .2s;
   }
-
-  /* ── Tipografia ── */
-  h1 {
-    font-size: 16pt;
-    font-weight: 700;
-    color: #1a1a2e;
-    margin: 28px 0 10px;
+ 
+  /* ════════════════════════════════════════════════════════════════
+     TIPOGRAFIA — fidelidade ao Word / ABNT
+     ════════════════════════════════════════════════════════════════ */
+ 
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--heading-1);
+    page-break-after: avoid;
     line-height: 1.3;
-    page-break-after: avoid;
+    transition: color .2s;
   }
-  h2 {
-    font-size: 13pt;
+ 
+  h1 {
+    font-size: 14pt;
     font-weight: 700;
-    color: #1a1a2e;
-    margin: 22px 0 8px;
-    line-height: 1.35;
-    page-break-after: avoid;
+    margin: 32px 0 12px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border-bottom: 2px solid var(--heading-1);
+    padding-bottom: 4px;
   }
+ 
+  h2 {
+    font-size: 12pt;
+    font-weight: 700;
+    margin: 24px 0 8px;
+    color: var(--heading-2);
+  }
+ 
   h3 {
     font-size: 12pt;
     font-weight: 600;
-    color: #2c2c3e;
     margin: 18px 0 6px;
-    line-height: 1.4;
+    color: var(--heading-3);
   }
+ 
   h4, h5, h6 {
     font-size: 12pt;
     font-weight: 600;
     margin: 14px 0 4px;
   }
-
+ 
   p {
-    margin: 0 0 10px;
+    margin: 0 0 12px;
     text-align: justify;
     hyphens: auto;
+    orphans: 3;
+    widows: 3;
   }
   p:last-child { margin-bottom: 0; }
-
+ 
+  /* Parágrafo recuado (padrão ABNT) */
+  p + p { text-indent: 1.25cm; }
+  h1 + p, h2 + p, h3 + p, h4 + p, li > p { text-indent: 0; }
+ 
   /* ── Listas ── */
   ul, ol {
-    margin: 6px 0 10px 24px;
+    margin: 8px 0 12px 32px;
     padding: 0;
   }
-  li { margin-bottom: 4px; }
-
+  li {
+    margin-bottom: 5px;
+    line-height: 1.6;
+  }
+ 
   /* ── Tabelas ── */
   table {
     border-collapse: collapse;
     width: 100%;
-    margin: 16px 0;
+    margin: 20px 0;
     font-size: 11pt;
   }
   td, th {
-    border: 1px solid #c8c8c8;
-    padding: 6px 10px;
+    border: 1px solid var(--table-border);
+    padding: 7px 11px;
     vertical-align: top;
+    transition: background .2s, border-color .2s;
   }
   th {
-    background: #f0f0f0;
+    background: var(--table-header);
     font-weight: 600;
     text-align: left;
   }
-  tr:nth-child(even) td { background: #fafafa; }
-
+  tr:nth-child(even) td { background: var(--table-stripe); }
+ 
   /* ── Imagens ── */
   img {
     max-width: 100%;
     height: auto;
     display: block;
-    margin: 12px auto;
+    margin: 16px auto;
   }
-
+ 
   /* ── Links ── */
-  a { color: #1155cc; text-decoration: underline; }
-
+  a { color: var(--link-color); text-decoration: underline; transition: color .2s; }
+ 
   /* ── Separadores ── */
   hr {
     border: none;
-    border-top: 1px solid #d0d0d0;
-    margin: 20px 0;
+    border-top: 1px solid var(--hr-color);
+    margin: 24px 0;
+    transition: border-color .2s;
   }
-
-  /* ── Highlights por status ── */
+ 
+  /* ── Citações longas (blockquote) ── */
+  blockquote {
+    margin: 16px 0 16px 40px;
+    font-size: 11pt;
+    color: var(--text-color);
+    border-left: 3px solid var(--hr-color);
+    padding-left: 12px;
+  }
+ 
+  /* ════════════════════════════════════════════════════════════════
+     HIGHLIGHTS — visíveis tanto no fundo branco quanto no escuro
+ 
+     Estratégia:
+     - Borda inferior grossa (3px) garante visibilidade mesmo quando
+       o fundo do highlight é próximo ao fundo da folha.
+     - Borda esquerda fina (2px) cria identidade visual lateral.
+     - Padding generoso para não cortar letras.
+     - Cursor pointer indica interatividade.
+     ════════════════════════════════════════════════════════════════ */
+ 
   mark {
-    border-radius: 2px;
-    padding: 1px 3px;
+    border-radius: 3px;
+    padding: 1px 4px 0;
     cursor: pointer;
-    transition: opacity 0.15s, box-shadow 0.15s;
+    transition: opacity .15s, box-shadow .15s, filter .1s;
     text-decoration: none;
+    display: inline;
+    /* Borda inferior sempre visível */
+    border-bottom: 3px solid transparent;
+    border-left: 2px solid transparent;
   }
   mark:hover {
-    box-shadow: 0 0 0 2px rgba(0,0,0,.15);
+    filter: brightness(.92);
+    box-shadow: 0 2px 8px rgba(0,0,0,.18);
   }
+ 
   mark.hl-adequate {
-    background: #bbf7d0;
-    color: #14532d;
-    border-bottom: 2px solid #16a34a;
+    background: var(--hl-adequate-bg);
+    color: var(--hl-adequate-text);
+    border-bottom-color: var(--hl-adequate-bd);
+    border-left-color: var(--hl-adequate-bd);
   }
   mark.hl-adequate-implicit {
-    background: #ccfbf1;
-    color: #134e4a;
-    border-bottom: 2px solid #0d9488;
+    background: var(--hl-implicit-bg);
+    color: var(--hl-implicit-text);
+    border-bottom-color: var(--hl-implicit-bd);
+    border-left-color: var(--hl-implicit-bd);
   }
   mark.hl-attention {
-    background: #fef08a;
-    color: #713f12;
-    border-bottom: 2px solid #ca8a04;
+    background: var(--hl-attention-bg);
+    color: var(--hl-attention-text);
+    border-bottom-color: var(--hl-attention-bd);
+    border-left-color: var(--hl-attention-bd);
   }
   mark.hl-critical {
-    background: #fecaca;
-    color: #7f1d1d;
-    border-bottom: 2px solid #dc2626;
+    background: var(--hl-critical-bg);
+    color: var(--hl-critical-text);
+    border-bottom-color: var(--hl-critical-bd);
+    border-left-color: var(--hl-critical-bd);
   }
-
-  /* ── Mark ativo (selecionado no checklist) ── */
+ 
+  /* Mark ativo (selecionado no checklist) */
   mark.hl-active {
     outline: 2.5px solid #3b82f6;
-    outline-offset: 1px;
-    box-shadow: 0 0 0 4px rgba(59,130,246,.15);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px rgba(59,130,246,.20);
   }
-
-  /* ── Fade dos marks não ativos ── */
+ 
+  /* Fade dos marks não ativos quando há um ativo */
   body.has-active mark:not(.hl-active) {
-    opacity: 0.2;
-    transition: opacity 0.2s;
+    opacity: 0.18;
+    transition: opacity .2s;
   }
-
-  /* ── Legenda de highlights (rodapé fixo) ── */
+ 
+  /* ════════════════════════════════════════════════════════════════
+     LEGENDA — fixa no rodapé do iframe
+     ════════════════════════════════════════════════════════════════ */
+ 
   .hl-legend {
     position: fixed;
     bottom: 0; left: 0; right: 0;
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 6px 20px;
-    background: rgba(255,255,255,.95);
-    border-top: 1px solid #e0e0e0;
-    font-size: 10pt;
-    color: #555;
-    backdrop-filter: blur(4px);
+    padding: 7px 20px;
+    background: var(--legend-bg);
+    border-top: 1px solid var(--legend-border);
+    font-size: 10.5pt;
+    color: var(--legend-text);
+    backdrop-filter: blur(6px);
     z-index: 100;
+    transition: background .2s, border-color .2s;
   }
-  .hl-legend span {
-    display: flex; align-items: center; gap: 5px;
-  }
+  .hl-legend strong { font-size: 10pt; color: var(--legend-text); margin-right: 4px; }
+  .hl-legend span   { display: flex; align-items: center; gap: 6px; font-size: 10pt; }
   .hl-dot {
-    width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+    width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,.12);
   }
-  .hl-dot.adequate          { background: #16a34a; }
-  .hl-dot.adequate-implicit { background: #0d9488; }
-  .hl-dot.attention         { background: #ca8a04; }
-  .hl-dot.critical          { background: #dc2626; }
+  .hl-dot.adequate          { background: var(--hl-adequate-bd); }
+  .hl-dot.adequate-implicit { background: var(--hl-implicit-bd); }
+  .hl-dot.attention         { background: var(--hl-attention-bd); }
+  .hl-dot.critical          { background: var(--hl-critical-bd); }
+ 
 </style>
 </head>
 <body>
 <div class="page-wrapper">
 ${body}
 </div>
-
-<!-- Legenda de highlights -->
+ 
 <div class="hl-legend">
   <strong>Trechos analisados:</strong>
   <span><div class="hl-dot adequate"></div> Adequado</span>
@@ -407,41 +586,68 @@ ${body}
   <span><div class="hl-dot attention"></div> Atenção</span>
   <span><div class="hl-dot critical"></div> Crítico</span>
 </div>
-
+ 
 <script>
-  // Sinaliza prontidão ao pai
+  // ── Sinaliza prontidão ao pai ──────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
     window.parent.postMessage({ type: 'IFRAME_READY' }, '*')
   })
-
-  // Recebe HIGHLIGHT_ELEMENT do pai
+ 
+  // ── Sincroniza dark mode com o tema do pai ─────────────────────────────────
+  // O pai envia { type: 'SET_THEME', dark: true/false } ao carregar e ao trocar.
+  function applyTheme(dark) {
+    if (dark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }
+ 
+  // Detecta o tema do pai pela cor de fundo do document (heurística simples)
+  // e aplica imediatamente para evitar flash.
+  try {
+    const parentBg = window.parent.document.documentElement.classList.contains('dark')
+    applyTheme(parentBg)
+  } catch (e) {
+    // cross-origin: usa prefers-color-scheme como fallback (já tratado no CSS)
+  }
+ 
+  // ── Recebe mensagens do pai ────────────────────────────────────────────────
   window.addEventListener('message', (e) => {
-    const { type, elementId } = e.data || {}
+    const { type, elementId, dark } = e.data || {}
+ 
+    // Sincronização de tema
+    if (type === 'SET_THEME') {
+      applyTheme(dark)
+      return
+    }
+ 
+    // Highlight de elemento
     if (type !== 'HIGHLIGHT_ELEMENT') return
-
+ 
     document.querySelectorAll('mark.hl-active').forEach(m => m.classList.remove('hl-active'))
     document.body.classList.remove('has-active')
-
+ 
     if (!elementId) return
-
+ 
     const marks = document.querySelectorAll(\`mark[data-element="\${elementId}"]\`)
     if (!marks.length) return
-
+ 
     document.body.classList.add('has-active')
     marks.forEach(m => m.classList.add('hl-active'))
     marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
   })
-
-  // Clique num mark → notifica o pai
+ 
+  // ── Clique num mark → notifica o pai ──────────────────────────────────────
   document.addEventListener('click', (e) => {
     const mark = e.target.closest('mark[data-element]')
     if (!mark) return
-
+ 
     document.querySelectorAll('mark.hl-active').forEach(m => m.classList.remove('hl-active'))
     document.body.classList.add('has-active')
     document.querySelectorAll(\`mark[data-element="\${mark.dataset.element}"]\`)
       .forEach(m => m.classList.add('hl-active'))
-
+ 
     window.parent.postMessage({
       type:      'MARK_CLICKED',
       elementId: mark.dataset.element,

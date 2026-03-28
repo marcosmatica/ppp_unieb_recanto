@@ -1,0 +1,182 @@
+/* src/components/ReviewActions.css */
+
+.review-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--gray-100);
+  margin-top: auto;
+  flex-shrink: 0;
+}
+
+/* ── Botão base ───────────────────────────────────────────────────── */
+.ra-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .12s, opacity .12s;
+  width: 100%;
+  text-align: left;
+}
+.ra-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ra-btn strong   { font-weight: 600; }
+
+/* ── Confirmar — cor varia por status da IA ────────────────────────── */
+.ra-btn--confirm {
+  color: #fff;
+  font-weight: 500;
+}
+.ra-btn--confirm.ra-btn--critical  { background: var(--red-600); }
+.ra-btn--confirm.ra-btn--critical:hover:not(:disabled)  { background: var(--red-700, #b91c1c); }
+
+.ra-btn--confirm.ra-btn--attention { background: var(--amber-500, #f59e0b); color: #1a1a1a; }
+.ra-btn--confirm.ra-btn--attention:hover:not(:disabled) { background: var(--amber-600, #d97706); }
+
+.ra-btn--confirm.ra-btn--adequate  { background: var(--green-600); }
+.ra-btn--confirm.ra-btn--adequate:hover:not(:disabled)  { background: var(--green-700, #15803d); }
+
+.ra-btn--confirm.ra-btn--gray      { background: var(--gray-500); }
+.ra-btn--confirm.ra-btn--gray:hover:not(:disabled)      { background: var(--gray-600); }
+
+/* ── Discordar (trigger) ─────────────────────────────────────────── */
+.ra-override-wrap { position: relative; }
+
+.ra-btn--override-trigger {
+  background: var(--white);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-300);
+  font-weight: 500;
+  justify-content: space-between;
+}
+.ra-btn--override-trigger:hover:not(:disabled) {
+  background: var(--gray-50);
+  border-color: var(--gray-400);
+}
+.ra-chevron { color: var(--gray-400); flex-shrink: 0; }
+
+/* ── Lista de opções de override ─────────────────────────────────── */
+.ra-override-list {
+  margin-top: 4px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,.08);
+  animation: ra-slide-in .12s ease-out;
+}
+@keyframes ra-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ra-override-hint {
+  font-size: 11px;
+  color: var(--gray-400);
+  padding: 8px 12px 4px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  font-weight: 600;
+}
+
+.ra-override-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--gray-100);
+  cursor: pointer;
+  text-align: left;
+  transition: background .1s;
+  font-family: inherit;
+}
+.ra-override-option:first-of-type { border-top: none; }
+.ra-override-option:hover:not(:disabled) { background: var(--gray-50); }
+.ra-override-option:disabled { opacity: .5; cursor: not-allowed; }
+
+.ra-override-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.ra-override-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ra-override-label { font-size: 13px; font-weight: 500; }
+.ra-override-sub   { font-size: 11.5px; color: var(--gray-500); }
+
+/* Variantes de cor por status de destino */
+.override-adequate .ra-override-icon  { background: var(--color-adequate-bg, #f0fdf4); color: var(--green-600); }
+.override-adequate .ra-override-label { color: var(--green-700, #15803d); }
+
+.override-attention .ra-override-icon  { background: var(--color-attention-bg, #fefce8); color: var(--amber-500, #f59e0b); }
+.override-attention .ra-override-label { color: var(--amber-700, #b45309); }
+
+.override-critical .ra-override-icon  { background: var(--color-critical-bg, #fef2f2); color: var(--red-500); }
+.override-critical .ra-override-label { color: var(--red-700, #b91c1c); }
+
+/* ── Ações secundárias ───────────────────────────────────────────── */
+.ra-secondary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ra-btn-ghost {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: var(--gray-500);
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: color .12s, background .12s;
+  white-space: nowrap;
+}
+.ra-btn-ghost:hover:not(:disabled) { color: var(--gray-700); background: var(--gray-100); }
+.ra-btn-ghost:disabled { opacity: .4; cursor: not-allowed; }
+
+.ra-btn-skip { margin-left: auto; }
+
+/* ── Textarea de observação ──────────────────────────────────────── */
+.ra-comment-box { flex: 1; }
+.ra-comment-box textarea {
+  width: 100%;
+  min-height: 72px;
+  max-height: 160px;
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+  color: var(--gray-800);
+  background: var(--white);
+  box-sizing: border-box;
+  transition: border-color .12s, box-shadow .12s;
+}
+.ra-comment-box textarea:focus {
+  outline: none;
+  border-color: var(--blue-400);
+  box-shadow: 0 0 0 3px rgba(59,130,246,.12);
+}
+.ra-comment-box textarea::placeholder { color: var(--gray-400); }
