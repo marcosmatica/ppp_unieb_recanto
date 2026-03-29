@@ -609,7 +609,7 @@ function MarkPopover({ element: el, onClose, onNavigate }) {
 function ElementCard({
                        element: el, checklistMap,
                        submitting, comment, setComment, showComment, setShowComment,
-                       onAgree, onOverride, onSkip, onPrev, onNext, hasPrev, hasNext, position,
+                       onAgree, onOverride, onSkip, onPrev, onNext, hasPrev, hasNext, position, onExcerptClick,
                      }) {
   const cfg    = STATUS_CONFIG[el.effectiveStatus] || STATUS_CONFIG.adequate
   const aiCfg  = STATUS_CONFIG[el.aiResult?.status] || STATUS_CONFIG.adequate

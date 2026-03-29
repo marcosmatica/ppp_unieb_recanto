@@ -614,14 +614,13 @@ ${body}
     }
   }
  
-  // Detecta o tema do pai pela cor de fundo do document (heurística simples)
-  // e aplica imediatamente para evitar flash.
-  try {
-    const parentBg = window.parent.document.documentElement.classList.contains('dark')
-    applyTheme(parentBg)
+  // Aplica tema imediatamente lendo o localStorage do pai (mesma origem)
+  {/* try {
+    const dark = window.parent.localStorage.getItem('darkMode') === 'true'
+    applyTheme(dark)
   } catch (e) {
-    // cross-origin: usa prefers-color-scheme como fallback (já tratado no CSS)
-  }
+    // fallback silencioso
+  } */}
  
   // ── Recebe mensagens do pai ────────────────────────────────────────────────
   window.addEventListener('message', (e) => {

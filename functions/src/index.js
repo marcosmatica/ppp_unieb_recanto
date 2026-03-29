@@ -4,7 +4,9 @@
  */
 
 const { initializeApp } = require('firebase-admin/app')
-initializeApp()
+initializeApp({
+  storageBucket: 'unieb-recanto.firebasestorage.app'
+})
 
 // Pipeline principal (Storage trigger — fase 1: Haiku)
 const { onPPPUploaded } = require('./pipeline/index')

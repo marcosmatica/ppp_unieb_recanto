@@ -46,7 +46,7 @@ exports.regenerateHighlightedHtml = onCall(
       throw new HttpsError('failed-precondition', 'Esta análise foi enviada como PDF — visualizador com highlights não disponível.')
     }
 
-    const bucketName = process.env.FIREBASE_STORAGE_BUCKET || ''
+    const bucketName = 'unieb-recanto.firebasestorage.app'
     const bucket     = getStorage().bucket(bucketName)
 
     // 2. Localiza o .docx original no Storage

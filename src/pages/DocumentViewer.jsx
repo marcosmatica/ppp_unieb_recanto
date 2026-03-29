@@ -125,16 +125,17 @@ export default function DocumentViewer({ analysisId, activeElement, onMarkClick,
             sandbox="allow-scripts allow-same-origin"
             title="Documento PPP"
             onLoad={() => {
+              // Envia tema IMEDIATAMENTE, sem timeout
+              iframeRef.current?.contentWindow?.postMessage({
+                type: 'SET_THEME',
+                dark: darkMode,
+              }, '*')
+
               setTimeout(() => {
                 setIframeReady(true)
                 iframeRef.current?.contentWindow?.postMessage({
                   type: 'HIGHLIGHT_ELEMENT',
                   elementId: activeElement?.elementId || null,
-                }, '*')
-                // Envia tema imediatamente no load (reforça a leitura de localStorage)
-                iframeRef.current?.contentWindow?.postMessage({
-                  type: 'SET_THEME',
-                  dark: darkMode,
                 }, '*')
               }, 300)
             }}
