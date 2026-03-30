@@ -63,6 +63,9 @@ export default function DocumentViewer({ analysisId, activeElement, onMarkClick,
       if (e.data?.type === 'IFRAME_READY') {
         setIframeReady(true)
       }
+      if (e.data?.type === 'IFRAME_LOG') {
+        console.log(e.data.msg)
+      }
     }
     window.addEventListener('message', handler)
     return () => window.removeEventListener('message', handler)

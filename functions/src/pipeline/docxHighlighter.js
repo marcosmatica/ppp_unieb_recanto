@@ -258,44 +258,10 @@ function wrapHtml(body, analysisId) {
      .dark injetada pelo pai através de postMessage (ver script).
      Ambos os mecanismos são suportados.
      ════════════════════════════════════════════════════════════════ */
-  @media (prefers-color-scheme: dark) { :root { --_dark: 1; } }
-  html.dark { --_dark: 1; }
+  /* @media (prefers-color-scheme: dark) { :root { --_dark: 1; } } */
+  /* html.dark { --_dark: 1; } */
  
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --page-bg:      #1a1e26;   /* fundo externo — azul-escuro suave, não preto puro */
-      --sheet-bg:     #242a36;   /* folha — cinza-azulado escuro */
-      --text-color:   #d1d5db;
-      --heading-1:    #93c5fd;   /* azul claro — destaca do fundo escuro */
-      --heading-2:    #93c5fd;
-      --heading-3:    #7dd3fc;
-      --table-border: #374151;
-      --table-header: #1f2937;
-      --table-stripe: #1a2030;
-      --hr-color:     #374151;
-      --link-color:   #60a5fa;
-      --legend-bg:    rgba(30,36,48,.97);
-      --legend-border:#374151;
-      --legend-text:  #9ca3af;
  
-      /* Highlights — modo escuro: mais saturados, texto claro */
-      --hl-adequate-bg:    #14532d;
-      --hl-adequate-text:  #bbf7d0;
-      --hl-adequate-bd:    #22c55e;
- 
-      --hl-implicit-bg:    #134e4a;
-      --hl-implicit-text:  #99f6e4;
-      --hl-implicit-bd:    #14b8a6;
- 
-      --hl-attention-bg:   #78350f;
-      --hl-attention-text: #fde68a;
-      --hl-attention-bd:   #f59e0b;
- 
-      --hl-critical-bg:    #7f1d1d;
-      --hl-critical-text:  #fca5a5;
-      --hl-critical-bd:    #ef4444;
-    }
-  }
  
   /* Mesma paleta para classe .dark (sincronizada via postMessage) */
   html.dark {
@@ -599,28 +565,29 @@ ${body}
 </div>
  
 <script>
-  // ── Sinaliza prontidão ao pai ──────────────────────────────────────────────
-  window.addEventListener('DOMContentLoaded', () => {
-    window.parent.postMessage({ type: 'IFRAME_READY' }, '*')
-  })
- 
-  // ── Sincroniza dark mode com o tema do pai ─────────────────────────────────
-  // O pai envia { type: 'SET_THEME', dark: true/false } ao carregar e ao trocar.
+
+    // ── applyTheme deve ser declarada PRIMEIRO para estar disponível no DOMContentLoaded ──
   function applyTheme(dark) {
     if (dark) {
       document.documentElement.classList.add('dark')
     } else {
       document.documentElement.classList.remove('dark')
     }
+    window.parent.postMessage({ type: 'IFRAME_LOG', msg: '[iframe] applyTheme: dark=' + dark + ' classes=' + document.documentElement.className }, '*')
   }
- 
-  // Aplica tema imediatamente lendo o localStorage do pai (mesma origem)
-  {/* try {
-    const dark = window.parent.localStorage.getItem('darkMode') === 'true'
-    applyTheme(dark)
-  } catch (e) {
-    // fallback silencioso
-  } */}
+    // ── Sinaliza prontidão ao pai ─────────────────────────────────────────────
+  window.addEventListener('DOMContentLoaded', () => {
+    window.parent.postMessage({ type: 'IFRAME_LOG', msg: '[iframe] DOMContentLoaded' }, '*')
+    try {
+      const dark = window.parent.localStorage.getItem('darkMode') === 'true'
+      window.parent.postMessage({ type: 'IFRAME_LOG', msg: '[iframe] localStorage darkMode=' + dark }, '*')
+      applyTheme(dark)
+    } catch (e) {
+      window.parent.postMessage({ type: 'IFRAME_LOG', msg: '[iframe] erro localStorage: ' + e.message }, '*')
+    }
+    window.parent.postMessage({ type: 'IFRAME_READY' }, '*')
+  })
+
  
   // ── Recebe mensagens do pai ────────────────────────────────────────────────
   window.addEventListener('message', (e) => {

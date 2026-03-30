@@ -28,15 +28,48 @@ import '../components/ReviewActions.css'
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
 const BLOCKS = [
-  { code: 'B1', label: 'Pré-textuais' },
-  { code: 'B2', label: 'Identidade' },
-  { code: 'B3', label: 'Planejamento' },
-  { code: 'B4', label: 'Ensino Médio' },
-  { code: 'B5', label: 'Projetos' },
-  { code: 'B6', label: 'Avaliação' },
-  { code: 'B7', label: 'Profissionais' },
-  { code: 'B8', label: 'Gestão' },
-  { code: 'B9', label: 'Pós-textuais' },
+  {
+    code: 'B1', label: 'Pré-textuais',
+    guideHint: 'Guia p.7–13: Formatação, Capa, Contracapa, Sumário, Apresentação, Introdução',
+  },
+  {
+    code: 'B2', label: 'Identidade',
+    guideHint: 'Guia p.14–26',
+    subgroups: [
+      { label: 'Histórico',              elementIds: ['B2_1_historico'],     guidePages: 'p.18' },
+      { label: 'Diagnóstico',            elementIds: ['B2_2_diagnostico'],   guidePages: 'p.19–20' },
+      { label: 'Função Social e Missão', elementIds: ['B2_3_funcao_social', 'B2_4_missao'], guidePages: 'p.21–22' },
+      { label: 'Princípios e Fundamentos', elementIds: ['B2_5_principios', 'B2_6_fundamentos'], guidePages: 'p.23–26' },
+    ],
+  },
+  {
+    code: 'B3', label: 'Planejamento',
+    guideHint: 'Guia p.27–36: Metas, Objetivos, OTP, Metodologias, Convivência, ODS',
+  },
+  {
+    code: 'B4', label: 'Etapas e Modalidades',
+    guideHint: 'Guia p.37–47: EI, EF, EM, EJA, EPT',
+  },
+  {
+    code: 'B5', label: 'Projetos e Programas',
+    guideHint: 'Guia p.47–48: Projetos obrigatórios 2026',
+  },
+  {
+    code: 'B6', label: 'Avaliação e Suporte',
+    guideHint: 'Guia p.49–50: Processo avaliativo, Conselho de Classe, AEE, SEAA, OE',
+  },
+  {
+    code: 'B7', label: 'Coordenação e Apoio',
+    guideHint: 'Guia p.51–63: Coord. Ped., Plano de Ação, Instâncias, Readaptados',
+  },
+  {
+    code: 'B8', label: 'Gestão e Implementação',
+    guideHint: 'Guia p.64–71: 6 dimensões, Permanência, Monitoramento do PPP',
+  },
+  {
+    code: 'B9', label: 'Pós-textuais',
+    guideHint: 'Guia p.72–75: Referências, Apêndices, Anexos',
+  },
 ]
 
 const STATUS_CONFIG = {
@@ -150,16 +183,9 @@ function ProcessingStatus({ status, schoolName }) {
   )
 }
 
-// ─── DrawerNav ────────────────────────────────────────────────────────────────
-// Coluna de gavetas aninhadas: Bloco → Elemento
-// Cada bloco é uma gaveta (accordion). Ao abrir, exibe os elementos como
-// sub-itens com dot colorido por status. O elemento ativo fica destacado.
-
 function DrawerNav({ blocks, elements, activeBlock, activeElementId, onSelectElement }) {
-  // Blocos abertos — inicialmente o bloco ativo
   const [openBlocks, setOpenBlocks] = useState(() => new Set([activeBlock]))
 
-  // Abre o bloco do elemento ativo quando muda externamente
   useEffect(() => {
     setOpenBlocks(prev => {
       if (prev.has(activeBlock)) return prev
@@ -177,120 +203,120 @@ function DrawerNav({ blocks, elements, activeBlock, activeElementId, onSelectEle
   }
 
   return (
-    <div className="drawer-nav">
-      {blocks.map((block, blockIdx) => {
-        const blockElems  = elements.filter(e => e.blockCode === block.code)
-        const isOpen      = openBlocks.has(block.code)
-        const isActive    = block.code === activeBlock
-        const pending     = blockElems.filter(e => e.humanReview?.status === 'pending').length
-        const critCount   = blockElems.filter(e => e.effectiveStatus === 'critical').length
-        const attCount    = blockElems.filter(e => e.effectiveStatus === 'attention').length
-        const okCount     = blockElems.filter(e =>
-          e.effectiveStatus === 'adequate' || e.effectiveStatus === 'adequate_implicit' || e.effectiveStatus === 'overridden'
-        ).length
+      <div className="drawer-nav">
+        {blocks.map((block, blockIdx) => {
+          const blockElems  = elements.filter(e => e.blockCode === block.code)
+          const isOpen      = openBlocks.has(block.code)
+          const isActive    = block.code === activeBlock
+          const pending     = blockElems.filter(e => e.humanReview?.status === 'pending').length
+          const critCount   = blockElems.filter(e => e.effectiveStatus === 'critical').length
+          const attCount    = blockElems.filter(e => e.effectiveStatus === 'attention').length
+          const okCount     = blockElems.filter(e =>
+              ['adequate', 'adequate_implicit', 'overridden'].includes(e.effectiveStatus)
+          ).length
+          const total = blockElems.length || 1
 
-        // Mini barra de progresso de status do bloco
-        const total = blockElems.length || 1
+          // Elementos sem subgrupo (para blocos sem subgroups definidos)
+          const hasSubgroups = block.subgroups?.length > 0
+          const groupedElementIds = hasSubgroups
+              ? new Set(block.subgroups.flatMap(g => g.elementIds))
+              : new Set()
+          const ungroupedElems = blockElems.filter(e => !groupedElementIds.has(e.elementId))
 
-        return (
-          <div
-            key={block.code}
-            className={`drawer-block${isOpen ? ' drawer-block--open' : ''}${isActive ? ' drawer-block--active' : ''}`}
-            style={{ '--block-depth': blockIdx }}
-          >
-            {/* Cabeçalho do bloco — gaveta externa */}
-            <button
-              className="drawer-block-header"
-              onClick={() => toggleBlock(block.code)}
-            >
-              {/* Indicador de abertura */}
+          return (
+              <div
+                  key={block.code}
+                  className={`drawer-block${isOpen ? ' drawer-block--open' : ''}${isActive ? ' drawer-block--active' : ''}`}
+                  style={{ '--block-depth': blockIdx }}
+              >
+                <button
+                    className="drawer-block-header"
+                    onClick={() => toggleBlock(block.code)}
+                >
               <span className={`drawer-chevron${isOpen ? ' drawer-chevron--open' : ''}`}>
                 <ChevronRight size={13} />
               </span>
+                  <span className="drawer-block-code">{block.code}</span>
+                  <span className="drawer-block-label">{block.label}</span>
+                  <div className="drawer-block-pills">
+                    {critCount > 0 && <span className="drawer-pill drawer-pill--critical">{critCount}</span>}
+                    {attCount > 0 && <span className="drawer-pill drawer-pill--attention">{attCount}</span>}
+                    {pending  > 0 && <span className="drawer-pill drawer-pill--pending">{pending}p</span>}
+                  </div>
+                </button>
 
-              {/* Código do bloco */}
-              <span className="drawer-block-code">{block.code}</span>
-
-              {/* Rótulo */}
-              <span className="drawer-block-label">{block.label}</span>
-
-              {/* Mini-pills de status */}
-              <div className="drawer-block-pills">
-                {critCount > 0 && (
-                  <span className="drawer-pill drawer-pill--critical">{critCount}</span>
+                {blockElems.length > 0 && (
+                    <div className="drawer-progress-bar">
+                      <div className="drawer-progress-ok"   style={{ width: `${(okCount   / total) * 100}%` }} />
+                      <div className="drawer-progress-att"  style={{ width: `${(attCount  / total) * 100}%` }} />
+                      <div className="drawer-progress-crit" style={{ width: `${(critCount / total) * 100}%` }} />
+                    </div>
                 )}
-                {attCount > 0 && (
-                  <span className="drawer-pill drawer-pill--attention">{attCount}</span>
-                )}
-                {pending > 0 && (
-                  <span className="drawer-pill drawer-pill--pending">{pending}p</span>
+
+                {isOpen && (
+                    <div className="drawer-elements">
+                      {/* Hint do guia */}
+                      {block.guideHint && (
+                          <div className="drawer-guide-hint">{block.guideHint}</div>
+                      )}
+
+                      {/* Com subgrupos (ex: B2) */}
+                      {hasSubgroups && block.subgroups.map(group => {
+                        const groupElems = blockElems.filter(e => group.elementIds.includes(e.elementId))
+                        if (groupElems.length === 0) return null
+                        return (
+                            <div key={group.label} className="drawer-subgroup">
+                              <div className="drawer-subgroup-header">
+                                <span className="drawer-subgroup-label">{group.label}</span>
+                                {group.guidePages && (
+                                    <span className="drawer-subgroup-pages">{group.guidePages}</span>
+                                )}
+                              </div>
+                              {groupElems.map(el => (
+                                  <DrawerElement
+                                      key={el.elementId}
+                                      el={el}
+                                      isActive={el.elementId === activeElementId}
+                                      onSelect={() => onSelectElement(block.code, el.elementId)}
+                                  />
+                              ))}
+                            </div>
+                        )
+                      })}
+
+                      {/* Sem subgrupos — renderização flat padrão */}
+                      {ungroupedElems.map(el => (
+                          <DrawerElement
+                              key={el.elementId}
+                              el={el}
+                              isActive={el.elementId === activeElementId}
+                              onSelect={() => onSelectElement(block.code, el.elementId)}
+                          />
+                      ))}
+                    </div>
                 )}
               </div>
-            </button>
-
-            {/* Mini-barra de progresso do bloco */}
-            {blockElems.length > 0 && (
-              <div className="drawer-progress-bar">
-                <div
-                  className="drawer-progress-ok"
-                  style={{ width: `${(okCount / total) * 100}%` }}
-                />
-                <div
-                  className="drawer-progress-att"
-                  style={{ width: `${(attCount / total) * 100}%` }}
-                />
-                <div
-                  className="drawer-progress-crit"
-                  style={{ width: `${(critCount / total) * 100}%` }}
-                />
-              </div>
-            )}
-
-            {/* Corpo da gaveta — elementos */}
-            {isOpen && blockElems.length > 0 && (
-              <div className="drawer-elements">
-                {blockElems.map((el) => {
-                  const isElActive  = el.elementId === activeElementId
-                  const dotColor    = STATUS_DOT[el.effectiveStatus] || 'var(--gray-300)'
-                  const isPending   = el.humanReview?.status === 'pending'
-
-                  return (
-                    <button
-                      key={el.elementId}
-                      className={`drawer-element${isElActive ? ' drawer-element--active' : ''}`}
-                      onClick={() => onSelectElement(block.code, el.elementId)}
-                    >
-                      {/* Linha de conexão visual (gaveta interna) */}
-                      <span className="drawer-element-line" />
-
-                      {/* Dot de status */}
-                      <span
-                        className="drawer-element-dot"
-                        style={{ background: dotColor }}
-                      />
-
-                      {/* Rótulo do elemento */}
-                      <span className="drawer-element-label">{el.label}</span>
-
-                      {/* Indicador de pendente */}
-                      {isPending && <span className="drawer-element-pending" />}
-                    </button>
-                  )
-                })}
-              </div>
-            )}
-
-            {/* Estado: sem elementos no bloco */}
-            {isOpen && blockElems.length === 0 && (
-              <div className="drawer-empty">Nenhum elemento</div>
-            )}
-          </div>
-        )
-      })}
-    </div>
+          )
+        })}
+      </div>
   )
 }
 
+// Sub-componente extraído para reutilização
+function DrawerElement({ el, isActive, onSelect }) {
+  const dotColor  = STATUS_DOT[el.effectiveStatus] || 'var(--gray-300)'
+  const isPending = el.humanReview?.status === 'pending'
+  return (
+      <button
+          className={`drawer-element${isActive ? ' drawer-element--active' : ''}`}
+          onClick={onSelect}
+      >
+        <span className="drawer-element-dot" style={{ background: dotColor }} />
+        <span className="drawer-element-label">{el.label}</span>
+        {isPending && <span className="drawer-element-pending-badge">rev</span>}
+      </button>
+  )
+}
 // ─── Página ───────────────────────────────────────────────────────────────────
 
 export default function AnalysisReview() {

@@ -1,4 +1,5 @@
 // src/components/layout/AppLayout.jsx
+import { useState, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, School, FolderOpen,
@@ -17,9 +18,47 @@ const NAV = [
   { to: '/settings',   label: 'Configurações',   icon: Settings },
 ]
 
+const SIDEBAR_DEFAULT = 280
+const SIDEBAR_MIN     = 180
+const SIDEBAR_MAX     = 420
+
+function useSidebarResize(defaultWidth) {
+  const [width,      setWidth]      = useState(defaultWidth)
+  const [isDragging, setIsDragging] = useState(false)
+  const startX = useRef(0)
+  const startW = useRef(0)
+
+  const onMouseDown = useCallback((e) => {
+    e.preventDefault()
+    startX.current = e.clientX
+    startW.current = width
+    setIsDragging(true)
+    document.body.style.cursor     = 'col-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = (ev) => {
+      const delta = ev.clientX - startX.current
+      const next  = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startW.current + delta))
+      setWidth(next)
+    }
+    const onUp = () => {
+      setIsDragging(false)
+      document.body.style.cursor     = ''
+      document.body.style.userSelect = ''
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup',   onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup',   onUp)
+  }, [width])
+
+  return [width, onMouseDown, isDragging]
+}
+
 export default function AppLayout() {
   const { user, profile, logout } = useAuth()
   const navigate = useNavigate()
+  const [sidebarW, onSidebarDrag, sidebarDragging] = useSidebarResize(SIDEBAR_DEFAULT)
 
   async function handleLogout() {
     await logout()
@@ -28,57 +67,66 @@ export default function AppLayout() {
   }
 
   return (
-      <div className="app-layout">
-        <aside className="sidebar">
-          <div className="sidebar-brand">
-            <div className="brand-mark">PPP</div>
-            <div>
-              <p className="brand-name">Analisador</p>
-              <p className="brand-sub">SEEDF · DF</p>
+    <div className="app-layout">
+      <aside
+        className={`sidebar${sidebarDragging ? ' sidebar--dragging' : ''}`}
+        style={{ width: sidebarW, minWidth: sidebarW }}
+      >
+        <div className="sidebar-brand">
+          <div className="brand-mark">PPP</div>
+          <div>
+            <p className="brand-name">Analisador</p>
+            <p className="brand-sub">SEEDF · DF</p>
+          </div>
+        </div>
+
+        <nav className="sidebar-nav">
+          {NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink key={to} to={to} className={({ isActive }) =>
+              `nav-item ${isActive ? 'active' : ''}`
+            }>
+              <Icon size={17} />
+              <span>{label}</span>
+              <ChevronRight size={13} className="nav-arrow" />
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="sidebar-footer">
+          <ThemeToggle />
+
+          {profile && (
+            <div className="user-info">
+              <div className="user-avatar">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt={profile.name} />
+                ) : (
+                  <span>{profile.name?.[0] ?? '?'}</span>
+                )}
+              </div>
+              <div className="user-meta">
+                <p className="user-name">{profile.name}</p>
+                <p className="user-cre">{profile.cre}</p>
+              </div>
             </div>
-          </div>
+          )}
 
-          <nav className="sidebar-nav">
-            {NAV.map(({ to, label, icon: Icon }) => (
-                <NavLink key={to} to={to} className={({ isActive }) =>
-                    `nav-item ${isActive ? 'active' : ''}`
-                }>
-                  <Icon size={17} />
-                  <span>{label}</span>
-                  <ChevronRight size={13} className="nav-arrow" />
-                </NavLink>
-            ))}
-          </nav>
+          <button className="logout-btn" onClick={handleLogout}>
+            <LogOut size={15} />
+            Sair
+          </button>
+        </div>
 
-          <div className="sidebar-footer">
-            <ThemeToggle />
+        {/* Borda de resize */}
+        <div
+          className={`sidebar-resize-border${sidebarDragging ? ' sidebar-resize-border--active' : ''}`}
+          onMouseDown={onSidebarDrag}
+        />
+      </aside>
 
-            {profile && (
-                <div className="user-info">
-                  <div className="user-avatar">
-                    {user?.photoURL ? (
-                        <img src={user.photoURL} alt={profile.name} />
-                    ) : (
-                        <span>{profile.name?.[0] ?? '?'}</span>
-                    )}
-                  </div>
-                  <div className="user-meta">
-                    <p className="user-name">{profile.name}</p>
-                    <p className="user-cre">{profile.cre}</p>
-                  </div>
-                </div>
-            )}
-
-            <button className="logout-btn" onClick={handleLogout}>
-              <LogOut size={15} />
-              Sair
-            </button>
-          </div>
-        </aside>
-
-        <main className="main-content">
-          <Outlet />
-        </main>
-      </div>
+      <main className="main-content">
+        <Outlet />
+      </main>
+    </div>
   )
 }
