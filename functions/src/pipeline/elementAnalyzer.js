@@ -19,7 +19,7 @@ const MODEL_FAST        = 'claude-haiku-4-5-20251001'
 const MODEL_DEEP        = 'claude-sonnet-4-6'
 const MAX_TOKENS_BATCH  = 4096
 const MAX_TOKENS_SINGLE = 1024
-const CONTEXT_CHARS     = 4000
+const CONTEXT_CHARS     = 10000
 const DEEP_SCORE_THRESH = 0.5
 
 // ─── Fase 1: Haiku — análise completa em lote ─────────────────────────────────
@@ -212,8 +212,11 @@ Responda SOMENTE com array JSON válido, sem texto adicional, sem markdown:
     "elementId": "string",
     "status": "adequate" | "adequate_implicit" | "attention" | "critical" | "not_applicable",
     "score": 0.0,
-    "summary": "até 280 chars — cite evidência encontrada ou descreva a ausência",
-    "excerpts": [{ "text": "trecho exato (máx 200 chars)", "section": "nome da seção" }],
+    "summary": "até 1000 chars — cite evidência encontrada ou descreva a ausência",
+    "excerpts": [
+  { "text": "trecho 1 (máx 1000 chars)", "section": "seção" },
+  { "text": "trecho 2 opcional", "section": "seção" }, { "text": "trecho 3 opcional", "section": "seção" }
+], "section": "nome da seção" }],
     "legalRefs": { "required": [], "found": [], "missing": [] },
     "missingItems": []
   }
@@ -271,7 +274,7 @@ Responda SOMENTE com JSON válido, sem texto adicional, sem markdown:
   "status": "adequate" | "adequate_implicit" | "attention" | "critical" | "not_applicable",
   "score": 0.0,
   "summary": "até 280 chars",
-  "excerpts": [{ "text": "trecho exato (máx 200 chars)", "section": "nome da seção" }],
+  "excerpts": [{ "text": "trecho exato (máx 1000 chars)", "section": "nome da seção" }],
   "legalRefs": { "required": [], "found": [], "missing": [] },
   "missingItems": []
 }`
@@ -300,8 +303,8 @@ function extractChunkByKeywords(text, keywords, maxChars) {
     if (pos !== -1) { bestPos = pos; break }
   }
   if (bestPos === -1) return ''
-  const start = Math.max(0, bestPos - 500)
-  const end   = Math.min(text.length, bestPos + maxChars - 500)
+  const start = Math.max(0, bestPos - 2000)
+  const end   = Math.min(text.length, bestPos + maxChars - 2000)
   return text.slice(start, end)
 }
 
