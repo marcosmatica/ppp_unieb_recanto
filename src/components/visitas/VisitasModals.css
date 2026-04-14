@@ -1,0 +1,133 @@
+/* src/components/visitas/VisitasModals.css */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.modal-box {
+  background: var(--color-background-primary);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
+  width: min(480px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.modal-box--wide {
+  width: min(680px, 96vw);
+}
+
+.modal-box h2 {
+  font-size: 18px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.modal-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.modal-box label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+}
+
+.modal-box select,
+.modal-box input[type="date"] {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 0.5rem;
+}
+
+.metas-fieldset {
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  padding: 1rem;
+}
+
+.metas-fieldset legend {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  padding: 0 6px;
+}
+
+.metas-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 0.5rem;
+}
+
+.meta-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--border-radius-md);
+  border: 1px solid var(--color-border-tertiary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.meta-check input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.meta-check.selected {
+  background: var(--color-background-info);
+  border-color: var(--color-border-info);
+}
+
+.meta-check.already {
+  opacity: 0.65;
+}
+
+.meta-check__code {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-info);
+  min-width: 28px;
+}
+
+.meta-check__label {
+  font-size: 13px;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  flex: 1;
+}
+
+.meta-check__tag {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  background: var(--color-background-secondary);
+  border-radius: 99px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  align-self: center;
+}

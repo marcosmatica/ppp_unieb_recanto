@@ -10,6 +10,9 @@ import RegionalSelector from './components/RegionalSelector'
 import './styles/globals.css'
 import SettingsPage from './pages/SettingsPage'
 
+import VisitasPage      from './pages/VisitasPage'
+import VisitaDetailPage from './pages/VisitaDetailPage'
+
 // Lazy loading das páginas que não são críticas
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const SchoolsPage = lazy(() => import('./pages/SchoolsPage'))
@@ -56,6 +59,9 @@ export default function App() {
                   <Route path="analyses/:analysisId/report" element={<ReportPage />} />
                   <Route path="reports" element={<ReportsPage />} />
                   <Route path="settings" element={<SettingsPage />} />
+                  <Route path="visitas" element={<VisitasPage />} />
+                  <Route path="visitas/:visitId" element={<VisitaDetailPage />} />
+                  <Route path="visitas/:visitId/sessoes/:sessionId" element={<SessaoPage />} />
                 </Route>
               </Routes>
             </Suspense>
