@@ -1,0 +1,186 @@
+/* src/components/visitas/IndicadorCard.css */
+
+.ic-root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1rem 1rem 2rem;
+}
+
+.ic-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ic-code {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-info);
+  background: var(--color-background-info);
+  border-radius: 99px;
+  padding: 3px 10px;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 3px;
+}
+
+.ic-title {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.ic-resultado {
+  background: var(--color-background-secondary);
+  border-radius: var(--border-radius-md);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ic-section-label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-tertiary);
+}
+
+.ic-resultado__text {
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ic-parametros {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ic-parametros__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ic-param {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.ic-param.met {
+  background: var(--color-background-success);
+  border-color: var(--color-border-success);
+}
+
+.ic-param__num {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+  min-width: 18px;
+  margin-top: 1px;
+}
+
+.ic-param.met .ic-param__num {
+  color: var(--color-text-success);
+}
+
+.ic-param__text {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.ic-param.met .ic-param__text {
+  color: var(--color-text-success);
+}
+
+.ic-nivel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ic-nivel__scale {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.ic-nivel__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px 8px;
+  border: 1.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-height: 64px;
+}
+
+.ic-nivel__btn.color-danger  { border-color: var(--color-border-danger);  }
+.ic-nivel__btn.color-warning { border-color: var(--color-border-warning); }
+.ic-nivel__btn.color-success { border-color: var(--color-border-success); }
+
+.ic-nivel__btn.selected.color-danger  { background: var(--color-background-danger);  }
+.ic-nivel__btn.selected.color-warning { background: var(--color-background-warning); }
+.ic-nivel__btn.selected.color-success { background: var(--color-background-success); }
+
+.ic-nivel__num {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+  line-height: 1;
+}
+
+.ic-nivel__btn.selected.color-danger  .ic-nivel__num { color: var(--color-text-danger);  }
+.ic-nivel__btn.selected.color-warning .ic-nivel__num { color: var(--color-text-warning); }
+.ic-nivel__btn.selected.color-success .ic-nivel__num { color: var(--color-text-success); }
+
+.ic-nivel__label {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.ic-obs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ic-obs__input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: var(--border-radius-md);
+  background: var(--color-background-secondary);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.ic-obs__input:focus {
+  outline: none;
+  border-color: var(--color-border-info);
+}

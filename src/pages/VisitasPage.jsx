@@ -4,12 +4,12 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { visitasService } from '../services/visitasService'
-import { schoolsService } from '../services/schoolsService'
+import { schoolsService } from '../services/firebase'
 import NovaVisitaModal from '../components/visitas/NovaVisitaModal'
 import './VisitasPage.css'
 
 export default function VisitasPage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const navigate = useNavigate()
 
   const [visitas, setVisitas] = useState([])
@@ -17,7 +17,7 @@ export default function VisitasPage() {
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
-    if (!profile) return
+    if (!profile.uid) return
     visitasService.listarPorCI(profile.uid).then(data => {
       setVisitas(data)
       setLoading(false)
@@ -29,8 +29,8 @@ export default function VisitasPage() {
       schoolId,
       schoolName,
       cre,
-      ciId: profile.uid,
-      ciName: profile.name,
+      ciId: user.uid,
+      ciName: profile?.name ?? user.displayName,
     })
     setShowModal(false)
     navigate(`/visitas/${visitId}`)

@@ -3,7 +3,7 @@ import { useState, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, School, FolderOpen,
-  FileText, Settings, LogOut, ChevronRight
+  FileText, Settings, LogOut, ChevronRight, Home
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import toast from 'react-hot-toast'
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/dashboard',  label: 'Painel',         icon: LayoutDashboard },
   { to: '/schools',    label: 'Escolas',         icon: School },
   { to: '/analyses',   label: 'Análises',        icon: FolderOpen },
+  { to: '/visitas',    label: 'Visitas EI', icon: Home },
   { to: '/reports',    label: 'Pareceres',       icon: FileText },
   { to: '/settings',   label: 'Configurações',   icon: Settings },
 ]

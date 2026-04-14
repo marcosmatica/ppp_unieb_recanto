@@ -1,0 +1,173 @@
+/* src/components/visitas/PlanCard.css */
+
+.pc-root {
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pc-root.status-done {
+  opacity: 0.7;
+}
+
+.pc-root.late {
+  border-color: var(--color-border-danger);
+}
+
+.pc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pc-codes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pc-indicator {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-info);
+  background: var(--color-background-info);
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+
+.pc-level {
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 99px;
+  padding: 2px 8px;
+}
+
+.pc-level.level-1, .pc-level.level-2 {
+  background: var(--color-background-danger);
+  color: var(--color-text-danger);
+}
+.pc-level.level-3 {
+  background: var(--color-background-warning);
+  color: var(--color-text-warning);
+}
+.pc-level.level-4, .pc-level.level-5 {
+  background: var(--color-background-success);
+  color: var(--color-text-success);
+}
+
+.pc-edit {
+  font-size: 16px;
+  color: var(--color-text-tertiary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--border-radius-md);
+}
+
+.pc-edit:hover {
+  background: var(--color-background-primary);
+  color: var(--color-text-secondary);
+}
+
+.pc-indicator-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.pc-goal {
+  font-size: 14px;
+  color: var(--color-text-primary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.pc-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pc-deadline {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.pc-deadline.late {
+  color: var(--color-text-danger);
+  font-weight: 500;
+}
+
+.pc-resp {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.pc-obs {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+  margin: 0;
+  line-height: 1.4;
+  border-left: 2px solid var(--color-border-tertiary);
+  padding-left: 8px;
+}
+
+.pc-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+  border-top: 1px solid var(--color-border-tertiary);
+}
+
+.pc-status-badge {
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 99px;
+  padding: 3px 10px;
+}
+
+.pc-status-badge.status-pending {
+  background: var(--color-background-secondary);
+  color: var(--color-text-tertiary);
+  border: 1px solid var(--color-border-tertiary);
+}
+
+.pc-status-badge.status-in_progress {
+  background: var(--color-background-warning);
+  color: var(--color-text-warning);
+}
+
+.pc-status-badge.status-done {
+  background: var(--color-background-success);
+  color: var(--color-text-success);
+}
+
+.pc-next-btn {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 99px;
+  border: none;
+  cursor: pointer;
+}
+
+.pc-next-btn.next-in_progress {
+  background: var(--color-background-warning);
+  color: var(--color-text-warning);
+}
+
+.pc-next-btn.next-done {
+  background: var(--color-background-success);
+  color: var(--color-text-success);
+}

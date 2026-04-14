@@ -1,0 +1,46 @@
+/* src/components/visitas/OfflineBanner.css */
+
+.offline-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  background: var(--color-background-warning);
+  border-bottom: 1px solid var(--color-border-warning);
+}
+
+.offline-banner__icon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-text-warning);
+  color: var(--color-background-primary);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.offline-banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.offline-banner__text strong {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-warning);
+}
+
+.offline-banner__text span {
+  font-size: 13px;
+  color: var(--color-text-warning);
+  line-height: 1.4;
+}

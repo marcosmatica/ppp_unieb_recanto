@@ -9,12 +9,18 @@ import LoginPage from './pages/LoginPage'
 import RegionalSelector from './components/RegionalSelector'
 import './styles/globals.css'
 import SettingsPage from './pages/SettingsPage'
+import Dashboard from './pages/Dashboard'
 
 import VisitasPage      from './pages/VisitasPage'
-import VisitaDetailPage from './pages/VisitaDetailPage'
+import VisitaDetailPage  from './pages/VisitaDetailPage'
+import SessaoPage        from './pages/SessaoPage'
+import PlanoAcaoPage     from './pages/PlanoAcaoPage'
+import DashboardEIPage   from './pages/DashboardEIPage'
+import EscolaDetailPage  from './pages/EscolaDetailPage'
+import { useServiceWorker } from './hooks/useServiceWorker'
 
 // Lazy loading das páginas que não são críticas
-const Dashboard = lazy(() => import('./pages/Dashboard'))
+//const Dashboard = lazy(() => import('./pages/Dashboard'))
 const SchoolsPage = lazy(() => import('./pages/SchoolsPage'))
 const AnalysisList = lazy(() => import('./pages/AnalysisList'))
 const AnalysisNew = lazy(() => import('./pages/AnalysisNew'))
@@ -62,6 +68,13 @@ export default function App() {
                   <Route path="visitas" element={<VisitasPage />} />
                   <Route path="visitas/:visitId" element={<VisitaDetailPage />} />
                   <Route path="visitas/:visitId/sessoes/:sessionId" element={<SessaoPage />} />
+                  <Route path="visitas/:visitId/planos" element={<PlanoAcaoPage />} />
+                  <Route path="visitas" element={<VisitasPage />} />
+                  <Route path="visitas/dashboard" element={<DashboardEIPage />} />
+                  <Route path="visitas/escola/:schoolId" element={<EscolaDetailPage />} />
+                  <Route path="visitas/:visitId" element={<VisitaDetailPage />} />
+                  <Route path="visitas/:visitId/sessoes/:sessionId" element={<SessaoPage />} />
+                  <Route path="visitas/:visitId/planos" element={<PlanoAcaoPage />} />
                 </Route>
               </Routes>
             </Suspense>

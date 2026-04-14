@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { schoolsService } from '../../services/schoolsService'
+import { schoolsService } from '../../services/firebase'
 import './VisitasModals.css'
 
 export default function NovaVisitaModal({ onConfirm, onClose }) {

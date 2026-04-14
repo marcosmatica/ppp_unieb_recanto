@@ -1,162 +1,145 @@
 // src/pages/Dashboard.jsx
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { analysesService } from '../services/firebase'
-import { formatDistanceToNow } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
-import {
-  AlertCircle, Clock, CheckCircle2,
-  TrendingUp, School, Plus, ArrowRight
-} from 'lucide-react'
+import { visitasService } from '../services/visitasService'
 import './Dashboard.css'
 
-const STATUS_LABEL = {
-  pending:     { label: 'Aguardando IA',  color: 'gray' },
-  in_progress: { label: 'Em revisão',     color: 'blue' },
-  review:      { label: 'Para supervisão',color: 'amber' },
-  approved:    { label: 'Aprovado',        color: 'green' },
-  rejected:    { label: 'Reprovado',       color: 'red' },
-}
-
 export default function Dashboard() {
-  const { profile } = useAuth()
-  const [analyses, setAnalyses] = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const { profile }  = useAuth()
+  const navigate     = useNavigate()
 
+  const [pppStats,    setPppStats]    = useState(null)
+  const [visitasStats, setVisitasStats] = useState(null)
+
+// correto
     useEffect(() => {
-        const fetch = async () => {
-            if (!profile) {
-                setLoading(false)
-                return
-            }
-
-            const data = await analysesService.getByCRE(profile.cre)
-            setAnalyses(data)
-            setLoading(false)
-        }
-
-        fetch()
+        if (!profile?.uid) return
+        carregarPPP()
+        carregarVisitas()
     }, [profile])
 
-  // Agregados
-  const total    = analyses.length
-  const critical = analyses.reduce((s, a) => s + (a.stats?.critical || 0), 0)
-  const pending  = analyses.filter(a => a.status === 'in_progress').length
-  const done     = analyses.filter(a => ['approved','rejected'].includes(a.status)).length
+  async function carregarPPP() {
+    try {
+      const lista = profile.role === 'admin'
+        ? await analysesService.getByCRE(profile.cre)
+        : await analysesService.getByAnalyst(profile.uid)
+      const pending  = lista.filter(a => a.status === 'pending' || a.status === 'analyzing').length
+      const review   = lista.filter(a => a.status === 'review').length
+      const done     = lista.filter(a => a.status === 'done').length
+      setPppStats({ total: lista.length, pending, review, done })
+    } catch { setPppStats({ total: 0, pending: 0, review: 0, done: 0 }) }
+  }
 
-  if (loading) return <PageLoader />
+  async function carregarVisitas() {
+    try {
+      const lista = await visitasService.listarPorCI(profile.uid)
+      const abertas   = lista.filter(v => v.status === 'open').length
+      const encerradas = lista.filter(v => v.status === 'closed').length
+      setVisitasStats({ total: lista.length, abertas, encerradas })
+    } catch { setVisitasStats({ total: 0, abertas: 0, encerradas: 0 }) }
+  }
 
   return (
-    <div className="page">
-      {/* Header */}
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Painel</h1>
-          <p className="page-sub">
-            {profile?.cre} · Ano letivo 2026
-          </p>
-        </div>
-        <Link to="/analyses/new" className="btn-primary">
-          <Plus size={16} /> Nova análise
-        </Link>
+    <div className="dash-root">
+      <div className="dash-greeting">
+        <h1>Olá{profile?.name ? `, ${profile.name.split(' ')[0]}` : ''}.</h1>
+        <p>{profile?.cre} · Ano letivo 2026</p>
       </div>
 
-      {/* KPIs */}
-      <div className="kpi-grid">
-        <KPICard icon={School}        color="blue"  label="Escolas"          value={total}    />
-        <KPICard icon={Clock}         color="amber" label="Em revisão"       value={pending}  />
-        <KPICard icon={AlertCircle}   color="red"   label="Itens críticos"   value={critical} />
-        <KPICard icon={CheckCircle2}  color="green" label="Concluídas"       value={done}     />
+      <div className="dash-modules">
+        <ModuleCard
+          title="Analisador de PPP"
+          description="Análise e validação de Projetos Político-Pedagógicos"
+          onClick={() => navigate('/analyses')}
+          stats={pppStats ? [
+            { label: 'Total',        value: pppStats.total,   },
+            { label: 'Em revisão',   value: pppStats.review,  accent: 'warning' },
+            { label: 'Concluídas',   value: pppStats.done,    accent: 'success' },
+          ] : null}
+          cta="Abrir PPP"
+          color="blue"
+          icon={<PppIcon />}
+        />
+
+        <ModuleCard
+          title="Visitas — Educação Infantil"
+          description="Monitoramento de indicadores de qualidade nas unidades"
+          onClick={() => navigate('/visitas')}
+          stats={visitasStats ? [
+            { label: 'Total',        value: visitasStats.total   },
+            { label: 'Em andamento', value: visitasStats.abertas, accent: 'warning' },
+            { label: 'Encerradas',   value: visitasStats.encerradas, accent: 'success' },
+          ] : null}
+          cta="Abrir Visitas"
+          color="teal"
+          icon={<VisitasIcon />}
+          secondaryAction={{ label: 'Dashboard', onClick: () => navigate('/visitas/dashboard') }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ModuleCard({ title, description, onClick, stats, cta, color, icon, secondaryAction }) {
+  return (
+    <div className={`mc-root mc-${color}`}>
+      <div className="mc-top">
+        <div className={`mc-icon mc-icon--${color}`}>{icon}</div>
+        <div className="mc-info">
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
       </div>
 
-      {/* Lista de análises recentes */}
-      <div className="section">
-        <div className="section-header">
-          <h2 className="section-title">Análises recentes</h2>
-          <Link to="/analyses" className="see-all">Ver todas <ArrowRight size={13}/></Link>
-        </div>
-
-        <div className="analyses-list">
-          {analyses.slice(0, 8).map(a => (
-            <AnalysisRow key={a.id} analysis={a} />
-          ))}
-          {analyses.length === 0 && (
-            <div className="empty-state">
-              <School size={32} className="empty-icon"/>
-              <p>Nenhuma análise ainda.</p>
-              <Link to="/analyses/new" className="btn-primary small">
-                <Plus size={14}/> Criar primeira análise
-              </Link>
+      {stats ? (
+        <div className="mc-stats">
+          {stats.map(s => (
+            <div key={s.label} className={`mc-stat ${s.accent ? `mc-stat--${s.accent}` : ''}`}>
+              <span className="mc-stat__value">{s.value}</span>
+              <span className="mc-stat__label">{s.label}</span>
             </div>
-          )}
+          ))}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function KPICard({ icon: Icon, color, label, value }) {
-  return (
-    <div className={`kpi-card kpi-${color}`}>
-      <div className="kpi-icon"><Icon size={20} /></div>
-      <div>
-        <p className="kpi-value">{value}</p>
-        <p className="kpi-label">{label}</p>
-      </div>
-    </div>
-  )
-}
-
-function AnalysisRow({ analysis: a }) {
-  const st = STATUS_LABEL[a.status] || STATUS_LABEL.pending
-  const ts = a.updatedAt?.toDate?.()
-
-  return (
-    <Link to={`/analyses/${a.id}`} className="analysis-row animate-fade-in">
-      <div className="row-school">
-        <p className="school-name">{a.schoolName}</p>
-        <p className="school-cre">{a.cre}</p>
-      </div>
-
-      <div className="row-stats">
-        {a.stats?.critical > 0 && (
-          <span className="stat-badge critical">{a.stats.critical} crítico{a.stats.critical !== 1 ? 's' : ''}</span>
-        )}
-        {a.stats?.attention > 0 && (
-          <span className="stat-badge attention">{a.stats.attention} atenção</span>
-        )}
-        <span className="stat-badge adequate">{a.stats?.adequate || 0} ok</span>
-      </div>
-
-      <div className="row-progress">
-        <div className="mini-bar">
-          <div
-            className="mini-fill"
-            style={{ width: `${a.stats?.total ? (a.stats.confirmed / a.stats.total) * 100 : 0}%` }}
-          />
+      ) : (
+        <div className="mc-stats mc-stats--loading">
+          <div className="mc-skeleton" /><div className="mc-skeleton" /><div className="mc-skeleton" />
         </div>
-        <span className="progress-label">
-          {a.stats?.confirmed || 0}/{a.stats?.total || 0}
-        </span>
-      </div>
-
-      <span className={`status-chip status-${st.color}`}>{st.label}</span>
-
-      {ts && (
-        <span className="row-time">
-          {formatDistanceToNow(ts, { locale: ptBR, addSuffix: true })}
-        </span>
       )}
-      <ArrowRight size={15} className="row-arrow" />
-    </Link>
+
+      <div className="mc-actions">
+        <button className={`mc-btn-primary mc-btn-primary--${color}`} onClick={onClick}>
+          {cta}
+        </button>
+        {secondaryAction && (
+          <button className="mc-btn-secondary" onClick={secondaryAction.onClick}>
+            {secondaryAction.label}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
-function PageLoader() {
+function PppIcon() {
   return (
-    <div className="page-loader">
-      <div className="spinner" />
-    </div>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14,2 14,8 20,8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10,9 9,9 8,9"/>
+    </svg>
+  )
+}
+
+function VisitasIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9,22 9,12 15,12 15,22"/>
+    </svg>
   )
 }

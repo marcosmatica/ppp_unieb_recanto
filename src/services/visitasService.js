@@ -4,7 +4,7 @@ import {
   collection, doc, addDoc, updateDoc, getDoc, getDocs,
   query, where, orderBy, serverTimestamp, Timestamp,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db } from './firebase'
 
 // ─── Visitas ─────────────────────────────────────────────────────────────────
 // Uma visita agrupa N sessões de verificação de metas para uma UE.

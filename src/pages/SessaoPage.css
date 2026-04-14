@@ -1,0 +1,179 @@
+/* src/pages/SessaoPage.css */
+
+.sp-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100dvh;
+}
+
+.sp-root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-background-primary);
+}
+
+/* ── Header ────────────────────────────────────────────────────────── */
+
+.sp-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  background: var(--color-background-primary);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.sp-back {
+  font-size: 20px;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px 4px 0;
+  line-height: 1;
+}
+
+.sp-header__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.sp-header__date {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.sp-header__metas {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
+}
+
+.sp-header__count {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+/* ── Indicador nav pills ──────────────────────────────────────────── */
+
+.sp-nav {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--color-border-tertiary);
+  scrollbar-width: none;
+}
+
+.sp-nav::-webkit-scrollbar { display: none; }
+
+.sp-nav__pill {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 99px;
+  border: 1.5px solid var(--color-border-tertiary);
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.sp-nav__pill.active {
+  border-color: var(--color-border-info);
+  background: var(--color-background-info);
+  color: var(--color-text-info);
+}
+
+.sp-nav__pill.done:not(.active) {
+  border-color: var(--color-border-success);
+  color: var(--color-text-success);
+  background: var(--color-background-success);
+}
+
+/* ── Main content ─────────────────────────────────────────────────── */
+
+.sp-main {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Prev/Next buttons ────────────────────────────────────────────── */
+
+.sp-nav-btns {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--color-border-tertiary);
+  border-bottom: 1px solid var(--color-border-tertiary);
+  background: var(--color-background-primary);
+}
+
+.sp-nav-btn {
+  flex: 1;
+  padding: 10px;
+  font-size: 14px;
+  color: var(--color-text-secondary);
+  background: var(--color-background-secondary);
+  border: 1px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-md);
+  cursor: pointer;
+}
+
+.sp-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* ── Footer ───────────────────────────────────────────────────────── */
+
+.sp-footer {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--color-background-primary);
+  border-top: 1px solid var(--color-border-tertiary);
+}
+
+.sp-footer__save {
+  flex: 0 0 auto;
+}
+
+.sp-footer__submit {
+  flex: 1;
+}
+
+/* ── Spinner (reutilizado do projeto principal) ───────────────────── */
+
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--color-border-tertiary);
+  border-top-color: var(--color-text-info);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.spinner-sm {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
