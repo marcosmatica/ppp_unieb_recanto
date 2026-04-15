@@ -1,4 +1,4 @@
-// src/App.jsx - versão com lazy loading
+// src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { Toaster } from 'react-hot-toast'
@@ -10,17 +10,14 @@ import RegionalSelector from './components/RegionalSelector'
 import './styles/globals.css'
 import SettingsPage from './pages/SettingsPage'
 import Dashboard from './pages/Dashboard'
-
-import VisitasPage      from './pages/VisitasPage'
-import VisitaDetailPage  from './pages/VisitaDetailPage'
-import SessaoPage        from './pages/SessaoPage'
-import PlanoAcaoPage     from './pages/PlanoAcaoPage'
-import DashboardEIPage   from './pages/DashboardEIPage'
-import EscolaDetailPage  from './pages/EscolaDetailPage'
+import VisitasPage from './pages/VisitasPage'
+import VisitaDetailPage from './pages/VisitaDetailPage'
+import SessaoPage from './pages/SessaoPage'
+import PlanoAcaoPage from './pages/PlanoAcaoPage'
+import DashboardEIPage from './pages/DashboardEIPage'
+import EscolaDetailPage from './pages/EscolaDetailPage'
 import { useServiceWorker } from './hooks/useServiceWorker'
 
-// Lazy loading das páginas que não são críticas
-//const Dashboard = lazy(() => import('./pages/Dashboard'))
 const SchoolsPage = lazy(() => import('./pages/SchoolsPage'))
 const AnalysisList = lazy(() => import('./pages/AnalysisList'))
 const AnalysisNew = lazy(() => import('./pages/AnalysisNew'))
@@ -28,12 +25,11 @@ const AnalysisReview = lazy(() => import('./pages/AnalysisReview'))
 const ReportPage = lazy(() => import('./pages/ReportPage'))
 const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 
-// Loader componente
 function PageLoader() {
   return (
-      <div className="page-loader">
-        <div className="spinner" />
-      </div>
+    <div className="page-loader">
+      <div className="spinner" />
+    </div>
   )
 }
 
@@ -46,43 +42,41 @@ function RequireAuth({ children }) {
 }
 
 export default function App() {
+  useServiceWorker()
   return (
-      <ThemeProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/" element={
-                  <RequireAuth><AppLayout /></RequireAuth>
-                }>
-                  <Route index element={<Navigate to="/dashboard" replace />} />
-                  <Route path="dashboard" element={<Dashboard />} />
-                  <Route path="schools" element={<SchoolsPage />} />
-                  <Route path="analyses" element={<AnalysisList />} />
-                  <Route path="analyses/new" element={<AnalysisNew />} />
-                  <Route path="analyses/:analysisId" element={<AnalysisReview />} />
-                  <Route path="analyses/:analysisId/report" element={<ReportPage />} />
-                  <Route path="reports" element={<ReportsPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="visitas" element={<VisitasPage />} />
-                  <Route path="visitas/:visitId" element={<VisitaDetailPage />} />
-                  <Route path="visitas/:visitId/sessoes/:sessionId" element={<SessaoPage />} />
-                  <Route path="visitas/:visitId/planos" element={<PlanoAcaoPage />} />
-                  <Route path="visitas" element={<VisitasPage />} />
-                  <Route path="visitas/dashboard" element={<DashboardEIPage />} />
-                  <Route path="visitas/escola/:schoolId" element={<EscolaDetailPage />} />
-                  <Route path="visitas/:visitId" element={<VisitaDetailPage />} />
-                  <Route path="visitas/:visitId/sessoes/:sessionId" element={<SessaoPage />} />
-                  <Route path="visitas/:visitId/planos" element={<PlanoAcaoPage />} />
-                </Route>
-              </Routes>
-            </Suspense>
-          </BrowserRouter>
-          <Toaster position="bottom-right" toastOptions={{
-            style: { fontFamily: 'DM Sans, sans-serif', fontSize: 13 }
-          }} />
-        </AuthProvider>
-      </ThemeProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
+                <Route index element={<Navigate to="/dashboard" replace />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="schools" element={<SchoolsPage />} />
+                <Route path="analyses" element={<AnalysisList />} />
+                <Route path="analyses/new" element={<AnalysisNew />} />
+                <Route path="analyses/:analysisId" element={<AnalysisReview />} />
+                <Route path="analyses/:analysisId/report" element={<ReportPage />} />
+                <Route path="reports" element={<ReportsPage />} />
+                <Route path="settings" element={<SettingsPage />} />
+
+                {/* Visitas EI — rotas estáticas ANTES de :visitId */}
+                <Route path="visitas" element={<VisitasPage />} />
+                <Route path="visitas/dashboard" element={<DashboardEIPage />} />
+                <Route path="visitas/escola/:schoolId" element={<EscolaDetailPage />} />
+                <Route path="visitas/:visitId" element={<VisitaDetailPage />} />
+                <Route path="visitas/:visitId/sessoes/:sessionId" element={<SessaoPage />} />
+                <Route path="visitas/:visitId/planos" element={<PlanoAcaoPage />} />
+              </Route>
+            </Routes>
+          </Suspense>
+        </BrowserRouter>
+        <Toaster
+          position="bottom-right"
+          toastOptions={{ style: { fontFamily: 'DM Sans, sans-serif', fontSize: 13 } }}
+        />
+      </AuthProvider>
+    </ThemeProvider>
   )
 }

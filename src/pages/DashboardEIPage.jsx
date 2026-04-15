@@ -1,27 +1,30 @@
 // src/pages/DashboardEIPage.jsx
-
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { usePermissoes } from '../hooks/usePermissoes'
 import {
-  fetchVisitasCRE, fetchVisitasCI,
-  fetchRespostasAgregadas, calcHeatmap, ALL_INDICATORS,
+  fetchVisitasCRE,
+  fetchVisitasCI,
+  fetchRespostasAgregadas,
+  calcHeatmap,
+  ALL_INDICATORS,
   fetchPlanosCRE,
 } from '../services/dashboardService'
 import { METAS_EI, DESCRIPTOR_LABELS } from '../services/indicadoresEI'
 import './DashboardEIPage.css'
 
 export default function DashboardEIPage() {
-  const { profile }  = useAuth()
-  const navigate     = useNavigate()
-  const isAdmin      = profile?.role === 'admin' || profile?.role === 'supervisor'
+  const { profile } = useAuth()
+  const { isSupervisor } = usePermissoes()
+  const navigate = useNavigate()
 
-  const [visitas,   setVisitas]   = useState([])
+  const [visitas, setVisitas] = useState([])
   const [agregadas, setAgregadas] = useState({})
-  const [planos,    setPlanos]    = useState([])
-  const [loading,   setLoading]   = useState(true)
+  const [planos, setPlanos] = useState([])
+  const [loading, setLoading] = useState(true)
   const [filtroMeta, setFiltroMeta] = useState('all')
-  const [filtroUE,   setFiltroUE]   = useState('all')
+  const [filtroUE, setFiltroUE] = useState('all')
 
   useEffect(() => {
     if (!profile?.uid) return
@@ -29,7 +32,7 @@ export default function DashboardEIPage() {
   }, [profile])
 
   async function carregar() {
-    const vs = isAdmin
+    const vs = isSupervisor
       ? await fetchVisitasCRE(profile.cre)
       : await fetchVisitasCI(profile.uid)
     setVisitas(vs)
@@ -49,15 +52,12 @@ export default function DashboardEIPage() {
     : ALL_INDICATORS.filter(i => i.metaCode === filtroMeta)
 
   const escolasFiltradas = useMemo(() => {
-    const ids = filtroUE === 'all'
-      ? Object.keys(agregadas)
-      : [filtroUE]
+    const ids = filtroUE === 'all' ? Object.keys(agregadas) : [filtroUE]
     return ids.map(id => ({ id, ...agregadas[id] }))
   }, [agregadas, filtroUE])
 
-  // ── Resumos
-  const totalVisitas   = visitas.length
-  const visitasAbertas = visitas.filter(v => v.status === 'open').length
+  const totalVisitas    = visitas.length
+  const visitasAbertas  = visitas.filter(v => v.status === 'open').length
   const planosAtrasados = planos.filter(p => {
     if (p.status === 'done' || !p.deadline) return false
     return new Date(p.deadline + 'T00:00') < new Date()
@@ -74,21 +74,19 @@ export default function DashboardEIPage() {
           <span className="dei-header__sub">{profile?.cre}</span>
         </div>
         <button
-          className="btn-secondary dei-header__relatorio"
-          onClick={() => navigate('/visitas/relatorio')}
+          className="btn-secondary dei-header__back"
+          onClick={() => navigate('/visitas')}
         >
-          Relatório
+          ← Visitas
         </button>
       </header>
 
-      {/* ── Resumo cards ── */}
       <div className="dei-cards">
-        <SummaryCard label="Visitas abertas" value={visitasAbertas} total={totalVisitas} variant="info" />
-        <SummaryCard label="Unidades monitoradas" value={totalEscolas} variant="neutral" />
-        <SummaryCard label="Planos atrasados" value={planosAtrasados} variant={planosAtrasados > 0 ? 'danger' : 'success'} />
+        <SummaryCard label="Visitas abertas"       value={visitasAbertas} total={totalVisitas} variant="info" />
+        <SummaryCard label="Unidades monitoradas"  value={totalEscolas}   variant="neutral" />
+        <SummaryCard label="Planos atrasados"       value={planosAtrasados} variant={planosAtrasados > 0 ? 'danger' : 'success'} />
       </div>
 
-      {/* ── Heatmap ── */}
       <section className="dei-heatmap-section">
         <div className="dei-filters">
           <select value={filtroMeta} onChange={e => setFiltroMeta(e.target.value)}>
@@ -153,7 +151,6 @@ export default function DashboardEIPage() {
         </div>
       </section>
 
-      {/* ── Planos atrasados ── */}
       {planosAtrasados > 0 && (
         <section className="dei-late">
           <p className="dei-section-label danger">
@@ -162,13 +159,16 @@ export default function DashboardEIPage() {
           {planos
             .filter(p => p.status !== 'done' && p.deadline && new Date(p.deadline + 'T00:00') < new Date())
             .map(p => (
-              <div key={p.id} className="dei-late__item" onClick={() => navigate(`/visitas/${p.visitId}/planos`)}>
+              <div
+                key={p.id}
+                className="dei-late__item"
+                onClick={() => navigate(`/visitas/${p.visitId}/planos`)}
+              >
                 <span className="dei-late__school">{p.schoolName}</span>
                 <span className="dei-late__ind">{p.indicatorCode} — {p.indicatorLabel}</span>
                 <span className="dei-late__deadline">Prazo: {p.deadline}</span>
               </div>
-            ))
-          }
+            ))}
         </section>
       )}
     </div>

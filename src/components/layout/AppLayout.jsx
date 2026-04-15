@@ -1,30 +1,28 @@
 // src/components/layout/AppLayout.jsx
 import { useState, useRef, useCallback } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
-import {
-  LayoutDashboard, School, FolderOpen,
-  FileText, Settings, LogOut, ChevronRight, Home
-} from 'lucide-react'
+import { LayoutDashboard, School, FolderOpen, FileText, Settings, LogOut, ChevronRight, Home, BarChart2 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import toast from 'react-hot-toast'
 import ThemeToggle from '../ThemeToggle'
 import './AppLayout.css'
 
 const NAV = [
-  { to: '/dashboard',  label: 'Painel',         icon: LayoutDashboard },
-  { to: '/schools',    label: 'Escolas',         icon: School },
-  { to: '/analyses',   label: 'Análises',        icon: FolderOpen },
-  { to: '/visitas',    label: 'Visitas EI', icon: Home },
-  { to: '/reports',    label: 'Pareceres',       icon: FileText },
-  { to: '/settings',   label: 'Configurações',   icon: Settings },
+  { to: '/dashboard',        label: 'Painel',         icon: LayoutDashboard },
+  { to: '/schools',          label: 'Escolas',         icon: School },
+  { to: '/analyses',         label: 'Análises',        icon: FolderOpen },
+  { to: '/visitas',          label: 'Visitas EI',      icon: Home },
+  { to: '/visitas/dashboard',label: 'Dashboard EI',    icon: BarChart2 },
+  { to: '/reports',          label: 'Pareceres',       icon: FileText },
+  { to: '/settings',         label: 'Configurações',   icon: Settings },
 ]
 
 const SIDEBAR_DEFAULT = 280
-const SIDEBAR_MIN     = 180
-const SIDEBAR_MAX     = 420
+const SIDEBAR_MIN = 180
+const SIDEBAR_MAX = 420
 
 function useSidebarResize(defaultWidth) {
-  const [width,      setWidth]      = useState(defaultWidth)
+  const [width, setWidth] = useState(defaultWidth)
   const [isDragging, setIsDragging] = useState(false)
   const startX = useRef(0)
   const startW = useRef(0)
@@ -34,23 +32,23 @@ function useSidebarResize(defaultWidth) {
     startX.current = e.clientX
     startW.current = width
     setIsDragging(true)
-    document.body.style.cursor     = 'col-resize'
+    document.body.style.cursor = 'col-resize'
     document.body.style.userSelect = 'none'
 
     const onMove = (ev) => {
       const delta = ev.clientX - startX.current
-      const next  = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startW.current + delta))
+      const next = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, startW.current + delta))
       setWidth(next)
     }
     const onUp = () => {
       setIsDragging(false)
-      document.body.style.cursor     = ''
+      document.body.style.cursor = ''
       document.body.style.userSelect = ''
       window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup',   onUp)
+      window.removeEventListener('mouseup', onUp)
     }
     window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup',   onUp)
+    window.addEventListener('mouseup', onUp)
   }, [width])
 
   return [width, onMouseDown, isDragging]
@@ -83,9 +81,12 @@ export default function AppLayout() {
 
         <nav className="sidebar-nav">
           {NAV.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} className={({ isActive }) =>
-              `nav-item ${isActive ? 'active' : ''}`
-            }>
+            <NavLink
+              key={to}
+              to={to}
+              end={to === '/visitas'}
+              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+            >
               <Icon size={17} />
               <span>{label}</span>
               <ChevronRight size={13} className="nav-arrow" />
@@ -95,7 +96,6 @@ export default function AppLayout() {
 
         <div className="sidebar-footer">
           <ThemeToggle />
-
           {profile && (
             <div className="user-info">
               <div className="user-avatar">
@@ -111,14 +111,12 @@ export default function AppLayout() {
               </div>
             </div>
           )}
-
           <button className="logout-btn" onClick={handleLogout}>
             <LogOut size={15} />
             Sair
           </button>
         </div>
 
-        {/* Borda de resize */}
         <div
           className={`sidebar-resize-border${sidebarDragging ? ' sidebar-resize-border--active' : ''}`}
           onMouseDown={onSidebarDrag}

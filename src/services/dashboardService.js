@@ -1,12 +1,8 @@
 // src/services/dashboardService.js
-
-import {
-  collection, getDocs, query, where, orderBy,
-} from 'firebase/firestore'
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore'
 import { db } from './firebase'
 import { METAS_EI } from './indicadoresEI'
 
-// Retorna todas as visitas do CI (ou da CRE para admin/supervisor)
 export async function fetchVisitasCRE(cre) {
   const q = query(
     collection(db, 'schoolVisits'),
@@ -27,12 +23,12 @@ export async function fetchVisitasCI(ciId) {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-// Para cada visita, busca sessões submetidas e suas respostas
-// Retorna { [schoolId]: { [indicatorCode]: { levels: number[], obs: string[] } } }
-export async function fetchRespostasAgregadas(visitIds) {
+// visitas = array de objetos { id, schoolId, schoolName, cre, createdAt }
+// Retorna { [schoolId]: { schoolName, cre, createdAt, indicators: { [code]: { levels, observations } } } }
+export async function fetchRespostasAgregadas(visitas) {
   const result = {}
   await Promise.all(
-    visitIds.map(async ({ id: visitId, schoolId, schoolName, cre, createdAt }) => {
+    visitas.map(async ({ id: visitId, schoolId, schoolName, cre, createdAt }) => {
       if (!result[schoolId]) {
         result[schoolId] = { schoolName, cre, createdAt, indicators: {} }
       }
@@ -67,7 +63,6 @@ export async function fetchRespostasAgregadas(visitIds) {
   return result
 }
 
-// Monta heatmap: { [schoolId]: { [indicatorCode]: avgLevel } }
 export function calcHeatmap(agregadas) {
   const heatmap = {}
   Object.entries(agregadas).forEach(([schoolId, { indicators }]) => {
@@ -81,12 +76,10 @@ export function calcHeatmap(agregadas) {
   return heatmap
 }
 
-// Todos os indicadores em ordem de Meta
 export const ALL_INDICATORS = METAS_EI.flatMap(m =>
   m.indicadores.map(i => ({ ...i, metaCode: m.code, metaLabel: m.label }))
 )
 
-// Busca histórico temporal de uma escola: [{visitDate, indicatorCode, level}]
 export async function fetchHistoricoEscola(schoolId) {
   const vSnap = await getDocs(
     query(
@@ -124,7 +117,7 @@ export async function fetchHistoricoEscola(schoolId) {
   return pontos.sort((a, b) => a.date - b.date)
 }
 
-// Busca todos os planos de ação de uma CRE (fan-out via visitas)
+// visitas = array de objetos com { id, schoolName, cre }
 export async function fetchPlanosCRE(visitas) {
   const plans = await Promise.all(
     visitas.map(v =>

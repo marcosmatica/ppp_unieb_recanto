@@ -1,5 +1,4 @@
 // src/pages/SessaoPage.jsx
-
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { sessoesService, responsesService } from '../services/visitasService'
@@ -8,16 +7,34 @@ import OfflineBanner from '../components/visitas/OfflineBanner'
 import IndicadorCard from '../components/visitas/IndicadorCard'
 import './SessaoPage.css'
 
+function ConfirmModal({ faltando, onConfirm, onCancel }) {
+  return (
+    <div className="sp-modal-overlay">
+      <div className="sp-modal">
+        <p className="sp-modal__text">
+          {faltando} indicador{faltando !== 1 ? 'es' : ''} sem nível marcado.
+          Deseja finalizar assim mesmo?
+        </p>
+        <div className="sp-modal__actions">
+          <button className="btn-secondary" onClick={onCancel}>Voltar</button>
+          <button className="btn-primary" onClick={onConfirm}>Finalizar</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SessaoPage() {
   const { visitId, sessionId } = useParams()
   const navigate = useNavigate()
 
-  const [sessao, setSessao]       = useState(null)
+  const [sessao, setSessao] = useState(null)
   const [respostas, setRespostas] = useState({})
-  const [saving, setSaving]       = useState(false)
-  const [loading, setLoading]     = useState(true)
-  const [isOnline, setIsOnline]   = useState(navigator.onLine)
+  const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [activeIdx, setActiveIdx] = useState(0)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -35,7 +52,10 @@ export default function SessaoPage() {
     const down = () => setIsOnline(false)
     window.addEventListener('online', up)
     window.addEventListener('offline', down)
-    return () => { window.removeEventListener('online', up); window.removeEventListener('offline', down) }
+    return () => {
+      window.removeEventListener('online', up)
+      window.removeEventListener('offline', down)
+    }
   }, [])
 
   const indicadores = sessao ? getIndicadoresDasMetas(sessao.metasCodes ?? []) : []
@@ -49,32 +69,35 @@ export default function SessaoPage() {
     }))
   }
 
+  async function salvarRespostas() {
+    await Promise.all(
+      Object.entries(respostas).map(([code, data]) =>
+        responsesService.salvar(visitId, sessionId, code, data)
+      )
+    )
+  }
+
   async function handleSalvar() {
     if (!isOnline) return
     setSaving(true)
-    try {
-      await Promise.all(
-        Object.entries(respostas).map(([code, data]) =>
-          responsesService.salvar(visitId, sessionId, code, data)
-        )
-      )
-    } finally {
-      setSaving(false)
+    try { await salvarRespostas() }
+    finally { setSaving(false) }
+  }
+
+  function handleSubmeterClick() {
+    if (!isOnline) return
+    if (preenchidos < total) {
+      setShowConfirm(true)
+    } else {
+      executarSubmissao()
     }
   }
 
-  async function handleSubmeter() {
-    if (!isOnline) return
-    if (preenchidos < total) {
-      if (!confirm(`${total - preenchidos} indicador(es) sem nível marcado. Submeter assim mesmo?`)) return
-    }
+  async function executarSubmissao() {
+    setShowConfirm(false)
     setSaving(true)
     try {
-      await Promise.all(
-        Object.entries(respostas).map(([code, data]) =>
-          responsesService.salvar(visitId, sessionId, code, data)
-        )
-      )
+      await salvarRespostas()
       await sessoesService.submeter(visitId, sessionId)
       navigate(`/visitas/${visitId}`)
     } finally {
@@ -89,6 +112,14 @@ export default function SessaoPage() {
   return (
     <div className="sp-root">
       <OfflineBanner isOnline={isOnline} />
+
+      {showConfirm && (
+        <ConfirmModal
+          faltando={total - preenchidos}
+          onConfirm={executarSubmissao}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
 
       <header className="sp-header">
         <button className="sp-back" onClick={() => navigate(`/visitas/${visitId}`)}>←</button>
@@ -130,18 +161,10 @@ export default function SessaoPage() {
       </main>
 
       <div className="sp-nav-btns">
-        <button
-          className="sp-nav-btn"
-          disabled={activeIdx === 0}
-          onClick={() => setActiveIdx(i => i - 1)}
-        >
+        <button className="sp-nav-btn" disabled={activeIdx === 0} onClick={() => setActiveIdx(i => i - 1)}>
           ← Anterior
         </button>
-        <button
-          className="sp-nav-btn"
-          disabled={activeIdx === total - 1}
-          onClick={() => setActiveIdx(i => i + 1)}
-        >
+        <button className="sp-nav-btn" disabled={activeIdx === total - 1} onClick={() => setActiveIdx(i => i + 1)}>
           Próximo →
         </button>
       </div>
@@ -156,7 +179,7 @@ export default function SessaoPage() {
         </button>
         <button
           className="btn-primary sp-footer__submit"
-          onClick={handleSubmeter}
+          onClick={handleSubmeterClick}
           disabled={saving || !isOnline}
         >
           {saving ? <span className="spinner-sm" /> : 'Finalizar sessão'}

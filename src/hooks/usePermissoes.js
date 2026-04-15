@@ -1,30 +1,17 @@
 // src/hooks/usePermissoes.js
-
 import { useAuth } from '../contexts/AuthContext'
-
-// Roles: 'ci' (coordenador intermediário), 'supervisor', 'admin'
-// ci      → vê apenas suas próprias visitas
-// supervisor → vê todas as visitas da CRE, não cria
-// admin   → vê tudo, pode tudo
 
 export function usePermissoes() {
   const { profile } = useAuth()
-  const role = profile?.role ?? 'ci'
+  const role = profile?.role ?? 'analyst'
 
   return {
-    podecriarVisita:    role === 'ci' || role === 'admin',
-    podeCriarSessao:    role === 'ci' || role === 'admin',
-    podeCriarPlano:     role === 'ci' || role === 'admin',
-    podeEditarPlano:    role === 'ci' || role === 'admin',
-    podeVerDashboard:   true,
-    podeVerTodasCRE:    role === 'supervisor' || role === 'admin',
-    podeEncerrarVisita: role === 'ci' || role === 'admin',
-
-    // Filtragem de escolas visíveis
-    filtroCRE: (role === 'supervisor' || role === 'admin') ? profile?.cre : null,
-    filtroCI:  role === 'ci' ? profile?.uid : null,
-
+    isAdmin:      role === 'admin',
+    isSupervisor: role === 'supervisor' || role === 'admin',
+    isAnalyst:    role === 'analyst',
     role,
-    profile,
+    podeEditar:   role !== 'analyst' || true,
+    podeAprovar:  role === 'supervisor' || role === 'admin',
+    podeVerTudo:  role === 'admin',
   }
 }
