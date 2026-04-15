@@ -15,7 +15,7 @@ import { METAS_EI, DESCRIPTOR_LABELS } from '../services/indicadoresEI'
 import './DashboardEIPage.css'
 
 export default function DashboardEIPage() {
-  const { profile } = useAuth()
+  const { profile, user } = useAuth()
   const { isSupervisor } = usePermissoes()
   const navigate = useNavigate()
 
@@ -34,7 +34,7 @@ export default function DashboardEIPage() {
   async function carregar() {
     const vs = isSupervisor
       ? await fetchVisitasCRE(profile.cre)
-      : await fetchVisitasCI(profile.uid)
+      : await fetchVisitasCI(user.uid)
     setVisitas(vs)
     const [agr, pls] = await Promise.all([
       fetchRespostasAgregadas(vs),

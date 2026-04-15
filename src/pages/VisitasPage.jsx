@@ -1,5 +1,4 @@
 // src/pages/VisitasPage.jsx
-
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -11,25 +10,24 @@ import './VisitasPage.css'
 export default function VisitasPage() {
   const { profile, user } = useAuth()
   const navigate = useNavigate()
-
-  const [visitas, setVisitas] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [visitas, setVisitas]     = useState([])
+  const [loading, setLoading]     = useState(true)
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
-    if (!profile.uid) return
-    visitasService.listarPorCI(profile.uid).then(data => {
-      setVisitas(data)
-      setLoading(false)
-    })
-  }, [profile])
+    if (!user?.uid) return
+    visitasService.listarPorCI(user.uid)
+      .then(data => setVisitas(data))
+      .catch(err => console.error('listarPorCI:', err))
+      .finally(() => setLoading(false))
+  }, [user?.uid])
 
   async function handleCriarVisita({ schoolId, schoolName, cre }) {
     const visitId = await visitasService.criar({
       schoolId,
       schoolName,
       cre,
-      ciId: user.uid,
+      ciId:   user.uid,
       ciName: profile?.name ?? user.displayName,
     })
     setShowModal(false)

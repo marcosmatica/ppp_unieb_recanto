@@ -1,5 +1,4 @@
 // src/pages/PlanoAcaoPage.jsx
-
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
@@ -14,15 +13,14 @@ const STATUS_ORDER = { pending: 0, in_progress: 1, done: 2 }
 
 export default function PlanoAcaoPage() {
   const { visitId } = useParams()
-  const navigate    = useNavigate()
-  const { profile } = useAuth()
-
-  const [visita,   setVisita]   = useState(null)
-  const [planos,   setPlanos]   = useState([])
+  const navigate = useNavigate()
+  const { profile, user } = useAuth()
+  const [visita,    setVisita]    = useState(null)
+  const [planos,    setPlanos]    = useState([])
   const [sugestoes, setSugestoes] = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const [loading,   setLoading]   = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [editPlan, setEditPlan] = useState(null)
+  const [editPlan,  setEditPlan]  = useState(null)
 
   useEffect(() => { carregar() }, [visitId])
 
@@ -35,7 +33,6 @@ export default function PlanoAcaoPage() {
     setVisita(v)
     setPlanos(planosExist)
 
-    // Monta sugestões: indicadores com nível <= 2 nas sessões submetidas
     const submitted = sessoes.filter(s => s.status === 'submitted')
     const respostasMap = {}
     await Promise.all(
@@ -48,6 +45,7 @@ export default function PlanoAcaoPage() {
         })
       })
     )
+
     const codigosComPlano = new Set(planosExist.map(p => p.indicatorCode))
     const sugs = Object.entries(respostasMap)
       .filter(([code, r]) => r.descriptorLevel <= 2 && !codigosComPlano.has(code))
@@ -61,7 +59,12 @@ export default function PlanoAcaoPage() {
     if (editPlan) {
       await planosService.atualizar(visitId, editPlan.id, dados)
     } else {
-      await planosService.criar({ visitId, ciId: profile.uid, ...dados })
+      await planosService.criar({
+        visitId,
+        ciId: user.uid,         // ← corrigido: user.uid (Auth) em vez de profile.uid
+        ciName: profile?.name ?? user.displayName,
+        ...dados,
+      })
     }
     setShowModal(false)
     setEditPlan(null)
@@ -105,17 +108,13 @@ export default function PlanoAcaoPage() {
           <p className="pap-section-label">Indicadores com nível crítico — criar plano</p>
           <div className="pap-sugestoes__list">
             {sugestoes.map(s => (
-              <button
-                key={s.code}
-                className="pap-sug-pill"
-                onClick={() => abrirNovo({
-                  indicatorCode:  s.code,
-                  indicatorLabel: s.indicador.label,
-                  metaCode:       s.indicador.meta.code,
-                  descriptorLevel: s.descriptorLevel,
-                  observation:    s.observation ?? '',
-                })}
-              >
+              <button key={s.code} className="pap-sug-pill" onClick={() => abrirNovo({
+                indicatorCode:  s.code,
+                indicatorLabel: s.indicador.label,
+                metaCode:       s.indicador.meta.code,
+                descriptorLevel: s.descriptorLevel,
+                observation:    s.observation ?? '',
+              })}>
                 <span className="pap-sug-pill__code">{s.code}</span>
                 <span className="pap-sug-pill__label">{s.indicador.label}</span>
                 <span className="pap-sug-pill__level">
