@@ -229,3 +229,47 @@
   padding: 24px 0;
   text-align: center;
 }
+
+
+/* ── Dark mode ── */
+html.dark .dei-header {
+  background: var(--gray-50);
+  border-bottom-color: var(--gray-200);
+}
+
+html.dark .dei-card {
+  border-color: var(--gray-200);
+}
+
+html.dark .dei-card.variant-info    { background: rgba(30, 107, 191, 0.12); }
+html.dark .dei-card.variant-danger  { background: rgba(220, 38, 38, 0.12); }
+html.dark .dei-card.variant-success { background: rgba(22, 163, 74, 0.12); }
+html.dark .dei-card.variant-neutral { background: var(--gray-100); }
+
+html.dark .dei-filters select {
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+  color: var(--gray-800);
+}
+
+html.dark .dei-heatmap-wrap {
+  border-color: var(--gray-200);
+}
+
+html.dark .dei-heatmap th {
+  background: var(--gray-100);
+  border-bottom-color: var(--gray-200);
+  color: var(--gray-600);
+}
+
+html.dark .dei-heatmap td {
+  border-bottom-color: var(--gray-200);
+}
+
+html.dark .dei-heatmap__school-name {
+  color: var(--gray-800);
+}
+
+html.dark .dei-cell.level-nd {
+  background: var(--gray-100);
+}

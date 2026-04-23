@@ -27,22 +27,31 @@ export default function DashboardEIPage() {
   const [filtroUE, setFiltroUE] = useState('all')
 
   useEffect(() => {
-    if (!profile?.uid) return
+    if (!user?.uid) return
     carregar()
-  }, [profile])
+  }, [user, profile, isSupervisor])
 
   async function carregar() {
-    const vs = isSupervisor
-      ? await fetchVisitasCRE(profile.cre)
-      : await fetchVisitasCI(user.uid)
-    setVisitas(vs)
-    const [agr, pls] = await Promise.all([
-      fetchRespostasAgregadas(vs),
-      fetchPlanosCRE(vs),
-    ])
-    setAgregadas(agr)
-    setPlanos(pls)
-    setLoading(false)
+    try {
+      setLoading(true)
+      const vs = isSupervisor && profile?.cre
+          ? await fetchVisitasCRE(profile.cre)
+          : await fetchVisitasCI(user.uid)
+      setVisitas(vs)
+      const [agr, pls] = await Promise.all([
+        fetchRespostasAgregadas(vs),
+        fetchPlanosCRE(vs),
+      ])
+      setAgregadas(agr)
+      setPlanos(pls)
+    } catch (err) {
+      console.error('[DashboardEI] erro ao carregar:', err)
+      setVisitas([])
+      setAgregadas({})
+      setPlanos([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   const heatmap = useMemo(() => calcHeatmap(agregadas), [agregadas])

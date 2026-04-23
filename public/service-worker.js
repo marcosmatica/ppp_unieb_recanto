@@ -1,74 +1,60 @@
 // public/service-worker.js
 
-const CACHE_NAME   = 'visitas-ei-v1'
-const SHELL_ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-]
+const CACHE_NAME = 'visitas-ei-v2'
+const SHELL_ASSETS = ['/', '/index.html', '/manifest.json']
 
-// ── Instala e pré-cacheia o shell
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL_ASSETS))
+      caches.open(CACHE_NAME).then(cache =>
+          Promise.all(
+              SHELL_ASSETS.map(url =>
+                  cache.add(url).catch(() => null)
+              )
+          )
+      )
   )
   self.skipWaiting()
 })
 
-// ── Ativa e limpa caches antigos
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+      caches.keys().then(keys =>
+          Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      ).then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
-// ── Estratégia por rota
 self.addEventListener('fetch', event => {
   const { request } = event
+
+  if (request.method !== 'GET') return
   const url = new URL(request.url)
+  if (url.origin !== self.location.origin) return
+  if (url.pathname.startsWith('/@') || url.pathname.includes('/node_modules/')) return
+  if (url.search.includes('t=') || url.search.includes('v=')) return
 
-  // Firestore / Firebase: network-only (não cacheia dados sensíveis)
-  if (
-    url.hostname.includes('firestore.googleapis.com') ||
-    url.hostname.includes('firebase') ||
-    url.hostname.includes('googleapis.com')
-  ) {
-    event.respondWith(fetch(request))
-    return
-  }
-
-  // Assets estáticos (JS/CSS/fontes): cache-first
-  if (
-    request.destination === 'script' ||
-    request.destination === 'style'  ||
-    request.destination === 'font'
-  ) {
-    event.respondWith(
-      caches.match(request).then(cached => {
-        if (cached) return cached
-        return fetch(request).then(res => {
-          const clone = res.clone()
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clone))
-          return res
-        })
-      })
-    )
-    return
-  }
-
-  // Navegação (HTML): network-first, fallback para shell
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(() => caches.match('/index.html'))
+        fetch(request).catch(async () => {
+          const cached = await caches.match('/index.html')
+          return cached || Response.error()
+        })
     )
     return
   }
 
-  // Default: network-first
-  event.respondWith(
-    fetch(request).catch(() => caches.match(request))
-  )
+  if (['script', 'style', 'font', 'image'].includes(request.destination)) {
+    event.respondWith(
+        caches.match(request).then(cached => {
+          if (cached) return cached
+          return fetch(request).then(res => {
+            if (res && res.ok && res.status === 200) {
+              const clone = res.clone()
+              caches.open(CACHE_NAME).then(cache => cache.put(request, clone)).catch(() => {})
+            }
+            return res
+          }).catch(() => Response.error())
+        })
+    )
+  }
 })

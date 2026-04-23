@@ -8,39 +8,44 @@ import { visitasService } from '../services/visitasService'
 import './Dashboard.css'
 
 export default function Dashboard() {
-  const { profile }  = useAuth()
-  const navigate     = useNavigate()
+    const { profile, user } = useAuth()
+    const navigate = useNavigate()
 
-  const [pppStats,    setPppStats]    = useState(null)
-  const [visitasStats, setVisitasStats] = useState(null)
+    const [pppStats, setPppStats] = useState(null)
+    const [visitasStats, setVisitasStats] = useState(null)
 
-// correto
     useEffect(() => {
-        if (!profile?.uid) return
+        if (!user?.uid) return
         carregarPPP()
         carregarVisitas()
-    }, [profile])
+    }, [user, profile])
 
-  async function carregarPPP() {
-    try {
-      const lista = profile.role === 'admin'
-        ? await analysesService.getByCRE(profile.cre)
-        : await analysesService.getByAnalyst(profile.uid)
-      const pending  = lista.filter(a => a.status === 'pending' || a.status === 'analyzing').length
-      const review   = lista.filter(a => a.status === 'review').length
-      const done     = lista.filter(a => a.status === 'done').length
-      setPppStats({ total: lista.length, pending, review, done })
-    } catch { setPppStats({ total: 0, pending: 0, review: 0, done: 0 }) }
-  }
+    async function carregarPPP() {
+        try {
+            const lista = profile?.role === 'admin' && profile?.cre
+                ? await analysesService.getByCRE(profile.cre)
+                : await analysesService.getByAnalyst(user.uid)
+            const pending = lista.filter(a => a.status === 'pending' || a.status === 'analyzing').length
+            const review  = lista.filter(a => a.status === 'review').length
+            const done    = lista.filter(a => a.status === 'done').length
+            setPppStats({ total: lista.length, pending, review, done })
+        } catch (err) {
+            console.error('[Dashboard] erro ao carregar PPPs:', err)
+            setPppStats({ total: 0, pending: 0, review: 0, done: 0 })
+        }
+    }
 
-  async function carregarVisitas() {
-    try {
-      const lista = await visitasService.listarPorCI(profile.uid)
-      const abertas   = lista.filter(v => v.status === 'open').length
-      const encerradas = lista.filter(v => v.status === 'closed').length
-      setVisitasStats({ total: lista.length, abertas, encerradas })
-    } catch { setVisitasStats({ total: 0, abertas: 0, encerradas: 0 }) }
-  }
+    async function carregarVisitas() {
+        try {
+            const lista = await visitasService.listarPorCI(user.uid)
+            const abertas    = lista.filter(v => v.status === 'open').length
+            const encerradas = lista.filter(v => v.status === 'closed').length
+            setVisitasStats({ total: lista.length, abertas, encerradas })
+        } catch (err) {
+            console.error('[Dashboard] erro ao carregar visitas:', err)
+            setVisitasStats({ total: 0, abertas: 0, encerradas: 0 })
+        }
+    }
 
   return (
     <div className="dash-root">

@@ -1,8 +1,8 @@
 // src/pages/SessaoPage.jsx
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { sessoesService, responsesService } from '../services/visitasService'
-import { getIndicadoresDasMetas, DESCRIPTOR_LABELS } from '../services/indicadoresEI'
+import { getIndicadoresDasMetas } from '../services/indicadoresEI'
 import OfflineBanner from '../components/visitas/OfflineBanner'
 import IndicadorCard from '../components/visitas/IndicadorCard'
 import './SessaoPage.css'
@@ -22,6 +22,28 @@ function ConfirmModal({ faltando, onConfirm, onCancel }) {
       </div>
     </div>
   )
+}
+
+function computeIndicatorProgress(indicador, resposta) {
+  const total = indicador.parametros.length
+  const paramLevels = resposta?.paramLevels ?? {}
+  const paramsDone = Object.values(paramLevels).filter(v => typeof v === 'number').length
+  const hasIndLevel = !!resposta?.descriptorLevel
+  const pctParams = total > 0 ? paramsDone / total : 0
+  const progresso = (pctParams * 0.7) + (hasIndLevel ? 0.3 : 0)
+  const completo = paramsDone === total && hasIndLevel
+  return { paramsDone, total, progresso, completo, hasIndLevel }
+}
+
+function computeIndicatorXP(indicador, resposta) {
+  if (!resposta) return 0
+  const paramLevels = resposta.paramLevels ?? {}
+  const paramsDone = Object.values(paramLevels).filter(v => typeof v === 'number').length
+  let xp = paramsDone * 10
+  if (resposta.descriptorLevel) xp += 20
+  if ((resposta.observation ?? '').trim().length >= 20) xp += 15
+  if ((resposta.evidenceUrls ?? []).length > 0) xp += 25
+  return xp
 }
 
 export default function SessaoPage() {
@@ -61,6 +83,19 @@ export default function SessaoPage() {
   const indicadores = sessao ? getIndicadoresDasMetas(sessao.metasCodes ?? []) : []
   const total       = indicadores.length
   const preenchidos = indicadores.filter(ind => respostas[ind.code]?.descriptorLevel).length
+
+  const { totalXP, progressoGeral } = useMemo(() => {
+    let xpSum = 0
+    let progSum = 0
+    indicadores.forEach(ind => {
+      xpSum  += computeIndicatorXP(ind, respostas[ind.code])
+      progSum += computeIndicatorProgress(ind, respostas[ind.code] ?? {}).progresso
+    })
+    return {
+      totalXP: xpSum,
+      progressoGeral: total > 0 ? progSum / total : 0,
+    }
+  }, [indicadores, respostas, total])
 
   function handleChange(indicatorCode, field, value) {
     setRespostas(prev => ({
@@ -131,19 +166,34 @@ export default function SessaoPage() {
             Metas: {(sessao?.metasCodes ?? []).join(', ')}
           </span>
         </div>
-        <span className="sp-header__count">{preenchidos}/{total}</span>
+        <div className="sp-header__stats">
+          <span className="sp-header__xp">⚡ {totalXP}</span>
+          <span className="sp-header__count">{preenchidos}/{total}</span>
+        </div>
       </header>
+
+      <div className="sp-progressbar">
+        <div
+          className="sp-progressbar__fill"
+          style={{ width: `${progressoGeral * 100}%` }}
+        />
+      </div>
 
       <nav className="sp-nav">
         {indicadores.map((ind, i) => {
-          const respondido = !!respostas[ind.code]?.descriptorLevel
+          const prog = computeIndicatorProgress(ind, respostas[ind.code] ?? {})
           return (
             <button
               key={ind.code}
-              className={`sp-nav__pill ${i === activeIdx ? 'active' : ''} ${respondido ? 'done' : ''}`}
+              className={`sp-nav__pill ${i === activeIdx ? 'active' : ''} ${prog.completo ? 'done' : ''} ${prog.progresso > 0 && !prog.completo ? 'partial' : ''}`}
               onClick={() => setActiveIdx(i)}
+              title={`${ind.code} — ${prog.paramsDone}/${prog.total} parâmetros`}
             >
-              {ind.code}
+              <span className="sp-nav__pill-code">{ind.code}</span>
+              {prog.progresso > 0 && !prog.completo && (
+                <span className="sp-nav__pill-ring" style={{ '--p': `${prog.progresso * 100}%` }} />
+              )}
+              {prog.completo && <span className="sp-nav__pill-check">✓</span>}
             </button>
           )
         })}
@@ -156,6 +206,8 @@ export default function SessaoPage() {
             indicador={ind}
             resposta={respostas[ind.code] ?? {}}
             onChange={(field, value) => handleChange(ind.code, field, value)}
+            visitId={visitId}
+            sessionId={sessionId}
           />
         )}
       </main>

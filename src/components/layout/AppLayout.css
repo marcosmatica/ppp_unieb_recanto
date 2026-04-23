@@ -5,7 +5,6 @@
   width: 100%;
 }
 
-/* Sidebar */
 .sidebar {
   flex-shrink: 0;
   background: var(--white);
@@ -18,16 +17,14 @@
   overflow-y: auto;
   overflow-x: hidden;
   transition: background-color 0.2s, border-color 0.2s;
-  /* position relativa para o resize-border absoluto */
   position: relative;
 }
 
-/* Impede seleção de texto enquanto arrasta */
 .sidebar--dragging {
   user-select: none;
 }
 
-/* ── Borda de resize ──────────────────────────────────────────── */
+/* ── Borda de resize (desktop) ─────────────────────────────────── */
 .sidebar-resize-border {
   position: absolute;
   top: 0;
@@ -38,7 +35,6 @@
   z-index: 10;
 }
 
-/* Linha visual */
 .sidebar-resize-border::after {
   content: '';
   position: absolute;
@@ -65,7 +61,7 @@
     0 0 18px 7px rgba(59,130,246,.50);
 }
 
-/* Brand */
+/* ── Brand ─────────────────────────────────────────────────────── */
 .sidebar-brand {
   padding: 1.5rem 1.25rem;
   display: flex;
@@ -109,7 +105,7 @@
   white-space: nowrap;
 }
 
-/* Navigation */
+/* ── Navigation ────────────────────────────────────────────────── */
 .sidebar-nav {
   flex: 1;
   padding: 0 0.75rem;
@@ -159,7 +155,7 @@
   opacity: 0.5;
 }
 
-/* Sidebar Footer */
+/* ── Sidebar Footer ───────────────────────────────────────────── */
 .sidebar-footer {
   padding: 1rem 0.75rem;
   border-top: 1px solid var(--gray-200);
@@ -170,7 +166,6 @@
   overflow: hidden;
 }
 
-/* User Info */
 .user-info {
   display: flex;
   align-items: center;
@@ -227,7 +222,6 @@
   text-overflow: ellipsis;
 }
 
-/* Logout Button */
 .logout-btn {
   width: 100%;
   display: flex;
@@ -251,7 +245,7 @@
   color: var(--red-600);
 }
 
-/* Main Content */
+/* ── Main Content ─────────────────────────────────────────────── */
 .main-content {
   flex: 1;
   overflow-y: auto;
@@ -259,7 +253,204 @@
   min-width: 0;
 }
 
-/* ── Dark Mode ────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   MOBILE — sidebar off-canvas + toggle animado
+   ═══════════════════════════════════════════════════════════════ */
+
+.sidebar-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  color: var(--gray-700);
+  cursor: pointer;
+  z-index: 60;
+  transition: background 0.2s, transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s, border-color 0.2s;
+}
+
+.sidebar-toggle:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-400);
+  color: var(--blue-600);
+}
+
+.sidebar-toggle:active {
+  transform: scale(0.92);
+}
+
+.sidebar-toggle__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-toggle--open {
+  background: var(--blue-600);
+  border-color: var(--blue-700);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+.sidebar-toggle--open:hover {
+  background: var(--blue-700);
+}
+
+.sidebar-toggle--open .sidebar-toggle__icon {
+  transform: rotate(90deg);
+}
+
+/* Overlay escuro quando sidebar aberto */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  animation: sidebar-overlay-in 0.25s ease;
+  backdrop-filter: blur(2px);
+}
+
+@keyframes sidebar-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* src/components/layout/AppLayout.css — SUBSTITUIR todo o bloco
+   "MOBILE — sidebar off-canvas + toggle animado" por este. */
+
+.sidebar-toggle {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  color: var(--gray-700);
+  cursor: pointer;
+  z-index: 60;
+  transition:
+          background 0.2s,
+          transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+          box-shadow 0.2s,
+          border-color 0.2s,
+          color 0.2s;
+}
+
+.sidebar-toggle:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-400);
+  color: var(--blue-600);
+}
+
+.sidebar-toggle:active {
+  transform: scale(0.92);
+}
+
+.sidebar-toggle__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Quando o sidebar abre, o botão "acompanha" o sidebar e fica
+   posicionado na borda direita dele (fora da área de conteúdo do menu) */
+.sidebar-toggle--open {
+  left: calc(min(280px, 85vw) - 56px);
+  background: var(--blue-600);
+  border-color: var(--blue-700);
+  color: var(--white);
+  box-shadow: var(--shadow-md);
+}
+
+.sidebar-toggle--open:hover {
+  background: var(--blue-700);
+  color: var(--white);
+}
+
+.sidebar-toggle--open .sidebar-toggle__icon {
+  transform: rotate(90deg);
+}
+
+/* Overlay escuro quando sidebar aberto */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 40;
+  animation: sidebar-overlay-in 0.25s ease;
+  backdrop-filter: blur(2px);
+}
+
+@keyframes sidebar-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Ajustes do layout em modo mobile */
+.app-layout--mobile {
+  flex-direction: column;
+}
+
+.app-layout--mobile .main-content {
+  padding-top: 68px;
+  width: 100%;
+}
+
+.sidebar--mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 280px !important;
+  min-width: 280px !important;
+  max-width: 85vw;
+  height: 100vh;
+  z-index: 50;
+  transform: translateX(-105%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-lg);
+}
+
+.sidebar--mobile.sidebar--open {
+  transform: translateX(0);
+}
+
+/* Dark mode do botão */
+.dark .sidebar-toggle {
+  background: var(--gray-50);
+  border-color: var(--gray-200);
+  color: var(--gray-300);
+}
+
+.dark .sidebar-toggle:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-400);
+  color: var(--blue-400);
+}
+
+.dark .sidebar-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   Dark Mode
+   ═══════════════════════════════════════════════════════════════ */
 .dark .sidebar {
   background: var(--gray-50);
   border-right-color: var(--gray-200);
@@ -325,4 +516,20 @@
 
 .dark .main-content {
   background: var(--gray-100);
+}
+
+.dark .sidebar-toggle {
+  background: var(--gray-50);
+  border-color: var(--gray-200);
+  color: var(--gray-300);
+}
+
+.dark .sidebar-toggle:hover {
+  background: var(--blue-50);
+  border-color: var(--blue-400);
+  color: var(--blue-400);
+}
+
+.dark .sidebar-overlay {
+  background: rgba(0, 0, 0, 0.7);
 }
