@@ -1,15 +1,81 @@
+// firestore.rules
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isAuth()      { return request.auth != null; }
+    function isWhitelisted() {
+      return isAuth()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function role() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    function myCRE() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.cre;
+    }
+    function isAdmin() { return isWhitelisted() && role() == 'admin'; }
+
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow get: if isAuth() && request.auth.uid == userId;
+      allow list, read: if isWhitelisted();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /schools/{schoolId} {
+      allow read:  if isWhitelisted();
+      allow write: if isWhitelisted() && role() in ['admin','supervisor'];
+    }
+
+    match /analyses/{analysisId} {
+      allow read:   if isWhitelisted();
+      allow create: if isWhitelisted() && role() in ['analyst','supervisor','admin'];
+      allow update: if isWhitelisted() && (
+                      role() in ['supervisor','admin'] ||
+                      resource.data.analystId == request.auth.uid
+                    );
+      allow delete: if isAdmin();
+
+      match /elementResults/{elementId} {
+        allow read:  if isWhitelisted();
+        allow write: if isWhitelisted() && (
+                       role() in ['supervisor','admin'] ||
+                       get(/databases/$(database)/documents/analyses/$(analysisId)).data.analystId == request.auth.uid
+                     );
+      }
+
+      match /observations/{obsId} {
+        allow read:  if isWhitelisted();
+        allow write: if isWhitelisted() && (
+                       role() in ['supervisor','admin'] ||
+                       get(/databases/$(database)/documents/analyses/$(analysisId)).data.analystId == request.auth.uid
+                     );
+      }
+    }
+
+    match /checklist_definitions/{elementId} {
+      allow read:  if isWhitelisted();
+      allow write: if isAdmin();
+    }
+
+    match /schoolVisits/{visitId} {
+      allow read:  if isWhitelisted();
+      allow write: if isWhitelisted();
+
+      match /{subpath=**} {
+        allow read, write: if isWhitelisted();
+      }
+    }
+
+    match /audit_log/{logId} {
+      allow read:   if isWhitelisted() && role() in ['supervisor','admin'];
+      allow create: if isWhitelisted();
+      allow update, delete: if false;
     }
 
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if false;
     }
-
   }
 }

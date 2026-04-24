@@ -1,4 +1,5 @@
 // src/App.jsx
+
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { lazy, Suspense } from 'react'
 import { Toaster } from 'react-hot-toast'
@@ -6,7 +7,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import AppLayout from './components/layout/AppLayout'
 import LoginPage from './pages/LoginPage'
-import RegionalSelector from './components/RegionalSelector'
+//import RegionalSelector from './components/RegionalSelector'
 import './styles/globals.css'
 import SettingsPage from './pages/SettingsPage'
 import Dashboard from './pages/Dashboard'
@@ -18,12 +19,13 @@ import DashboardEIPage from './pages/DashboardEIPage'
 import EscolaDetailPage from './pages/EscolaDetailPage'
 import { useServiceWorker } from './hooks/useServiceWorker'
 
-const SchoolsPage = lazy(() => import('./pages/SchoolsPage'))
-const AnalysisList = lazy(() => import('./pages/AnalysisList'))
-const AnalysisNew = lazy(() => import('./pages/AnalysisNew'))
+const SchoolsPage    = lazy(() => import('./pages/SchoolsPage'))
+const AnalysisList   = lazy(() => import('./pages/AnalysisList'))
+const AnalysisNew    = lazy(() => import('./pages/AnalysisNew'))
 const AnalysisReview = lazy(() => import('./pages/AnalysisReview'))
-const ReportPage = lazy(() => import('./pages/ReportPage'))
-const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const ReportPage     = lazy(() => import('./pages/ReportPage'))
+const ReportsPage    = lazy(() => import('./pages/ReportsPage'))
+const ParecerPage    = lazy(() => import('./pages/ParecerPage'))
 
 function PageLoader() {
   return (
@@ -34,8 +36,9 @@ function PageLoader() {
 }
 
 function RequireAuth({ children }) {
-  const { user, loading, showRegionalSelector } = useAuth()
+  const { user, loading, unauthorized, showRegionalSelector } = useAuth()
   if (loading) return <PageLoader />
+  if (unauthorized) return <UnauthorizedPage />
   if (!user) return <Navigate to="/login" replace />
   if (showRegionalSelector) return <RegionalSelector />
   return children
@@ -50,6 +53,11 @@ export default function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+
+              <Route path="/analyses/:analysisId/parecer" element={
+                <RequireAuth><ParecerPage /></RequireAuth>
+              } />
+
               <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
@@ -61,7 +69,6 @@ export default function App() {
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
 
-                {/* Visitas EI — rotas estáticas ANTES de :visitId */}
                 <Route path="visitas" element={<VisitasPage />} />
                 <Route path="visitas/dashboard" element={<DashboardEIPage />} />
                 <Route path="visitas/escola/:schoolId" element={<EscolaDetailPage />} />

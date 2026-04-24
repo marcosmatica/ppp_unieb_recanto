@@ -7,60 +7,54 @@ import { REGIONALS } from '../constants/regionals' // Importar regionais
 
 const AuthContext = createContext(null)
 
+// src/contexts/AuthContext.jsx
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [showRegionalSelector, setShowRegionalSelector] = useState(false)
+  const [unauthorized, setUnauthorized] = useState(false)
 
   useEffect(() => {
     return onAuthStateChanged(auth, async firebaseUser => {
       try {
-        if (firebaseUser) {
-          setUser(firebaseUser)
-
-          const ref = doc(db, 'users', firebaseUser.uid)
-          const snap = await getDoc(ref)
-
-          if (snap.exists()) {
-            setProfile(snap.data())
-          } else {
-            // Novo usuário - precisa selecionar a CRE
-            setShowRegionalSelector(true)
-            setProfile(null)
-          }
-        } else {
+        if (!firebaseUser) {
           setUser(null)
           setProfile(null)
+          setUnauthorized(false)
+          setLoading(false)
+          return
         }
+
+        const ref  = doc(db, 'users', firebaseUser.uid)
+        const snap = await getDoc(ref)
+
+        if (!snap.exists()) {
+          await signOut(auth)
+          setUser(null)
+          setProfile(null)
+          setUnauthorized(true)
+          setLoading(false)
+          return
+        }
+
+        setUser(firebaseUser)
+        setProfile({ uid: firebaseUser.uid, ...snap.data() })
+        setUnauthorized(false)
       } catch (err) {
         console.error("Erro ao carregar perfil:", err)
+        setUser(null)
         setProfile(null)
+        setUnauthorized(false)
       }
 
       setLoading(false)
     })
   }, [])
 
-  const completeProfile = async (selectedCre) => {
-    if (!user) return
-
-    const newProfile = {
-      name: user.displayName,
-      email: user.email,
-      cre: selectedCre, // Usar a CRE selecionada
-      role: 'analyst',
-      createdAt: new Date()
-    }
-
-    const ref = doc(db, 'users', user.uid)
-    await setDoc(ref, newProfile)
-    setProfile(newProfile)
-    setShowRegionalSelector(false)
-  }
-
   const login = async () => {
     try {
+      setUnauthorized(false)
       const result = await signInWithPopup(auth, googleProvider)
       return result
     } catch (err) {
@@ -69,12 +63,17 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const logout = () => signOut(auth)
+  const logout = () => {
+    setUnauthorized(false)
+    return signOut(auth)
+  }
 
   return (
       <AuthContext.Provider value={{
         user, profile, loading, login, logout,
-        showRegionalSelector, completeProfile
+        unauthorized,
+        showRegionalSelector: false,
+        completeProfile: async () => {},
       }}>
         {children}
       </AuthContext.Provider>
