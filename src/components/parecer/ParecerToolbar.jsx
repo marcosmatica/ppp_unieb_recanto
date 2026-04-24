@@ -1,8 +1,9 @@
 // src/components/parecer/ParecerToolbar.jsx
 
 import { useMemo } from 'react'
-import { AlertCircle, AlertTriangle, Info, Download, RefreshCw, ArrowLeft, EyeOff, Eye } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Info, RefreshCw, ArrowLeft, EyeOff, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import ExportParecerButton from './ExportParecerButton'
 
 const TIPOS = [
   { key: 'nao_conformidade', label: 'Não conformidade', icon: AlertCircle,    color: 'critical'  },
@@ -41,6 +42,9 @@ export default function ParecerToolbar({
       tipos: f.tipos.includes(key) ? f.tipos.filter(t => t !== key) : [...f.tipos, key],
     }))
   }
+
+  const pendentes = observations.filter(o => o.status === 'auto').length
+  const exportDisabled = pendentes > 0 || counts.total === 0
 
   return (
     <div className="parecer-toolbar">
@@ -97,9 +101,12 @@ export default function ParecerToolbar({
             {regenerating ? 'Gerando…' : 'Regenerar'}
           </button>
         )}
-        <button className="btn-primary" disabled>
-          <Download size={13} /> Exportar PDF
-        </button>
+        <ExportParecerButton
+          analysisId={analysis?.id}
+          pdfUrl={analysis?.parecer?.pdfUrl}
+          pdfGeneratedAt={analysis?.parecer?.pdfGeneratedAt}
+          disabled={exportDisabled}
+        />
       </div>
     </div>
   )

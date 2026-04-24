@@ -1,32 +1,32 @@
 {
-  "name": "ppp-analyzer",
-  "version": "1.0.0",
-  "private": true,
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "24"
+  },
+  "main": "index.js",
   "dependencies": {
-    "@tanstack/react-query": "^5.51.0",
-    "date-fns": "^3.6.0",
-    "dotenv": "^17.3.1",
-    "firebase": "^10.14.1",
-    "firebase-functions": "^7.2.5",
-    "lucide-react": "^0.400.0",
-    "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "react-dropzone": "^14.2.3",
-    "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.26.0",
+    "@sparticuz/chromium": "^131.0.0",
+    "docx": "^9.6.1",
+    "dotenv": "^17.0.0",
+    "firebase-admin": "^13.7.0",
+    "firebase-functions": "^7.2.2",
+    "mammoth": "^1.12.0",
+    "pdf-parse": "^1.1.4",
+    "pdf2pic": "^3.2.0",
+    "puppeteer-core": "^23.0.0",
+    "tesseract.js": "^5.1.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.0",
-    "autoprefixer": "^10.4.0",
-    "firebase-admin": "^13.8.0",
-    "postcss": "^8.4.0",
-    "tailwindcss": "^3.4.0",
-    "vite": "^5.3.0"
+    "firebase-functions-test": "^3.4.1"
   },
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  }
+  "private": true
 }

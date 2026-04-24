@@ -100,4 +100,10 @@ export const parecerService = {
     const { data } = await fn({ analysisId, reopen })
     return data
   },
+
+  async exportPdf(analysisId) {
+    const fn = httpsCallable(functions, 'exportParecerPdf')
+    const { data } = await fn({ analysisId })
+    return data
+  },
 }

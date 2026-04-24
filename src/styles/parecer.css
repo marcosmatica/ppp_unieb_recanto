@@ -491,6 +491,20 @@
   border-radius: 0 0 12px 12px;
 }
 
+.export-group {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.export-group .btn-primary {
+  text-decoration: none;
+}
+
+html.dark .export-group .btn-primary {
+  /* mantém estilo padrão */
+}
+
 /* ══════════════ Mobile ══════════════ */
 
 @media (max-width: 900px) {
