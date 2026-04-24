@@ -1,7 +1,7 @@
 // src/components/parecer/ParecerToolbar.jsx
 
 import { useMemo } from 'react'
-import { AlertCircle, AlertTriangle, Info, Filter, Download, RefreshCw, ArrowLeft } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Info, Download, RefreshCw, ArrowLeft, EyeOff, Eye } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const TIPOS = [
@@ -17,16 +17,21 @@ export default function ParecerToolbar({
   setFilters,
   onRegenerate,
   regenerating,
+  canRegenerate,
 }) {
   const counts = useMemo(() => {
-    const c = { nao_conformidade: 0, ajuste: 0, observacao: 0, total: observations.length }
-    for (const o of observations) if (c[o.tipo] != null) c[o.tipo]++
+    const c = { nao_conformidade: 0, ajuste: 0, observacao: 0, total: 0 }
+    for (const o of observations) {
+      if (o.status === 'rejected') continue
+      c.total++
+      if (c[o.tipo] != null) c[o.tipo]++
+    }
     return c
   }, [observations])
 
   const blocks = useMemo(() => {
     const s = new Set()
-    for (const o of observations) if (o.blockCode) s.add(o.blockCode)
+    for (const o of observations) if (o.blockCode && o.status !== 'rejected') s.add(o.blockCode)
     return [...s].sort()
   }, [observations])
 
@@ -45,7 +50,7 @@ export default function ParecerToolbar({
         </Link>
         <div className="pt-title">
           <h1>{analysis?.schoolName || '—'}</h1>
-          <span>PPP {analysis?.year} · Parecer em rascunho</span>
+          <span>PPP {analysis?.year} · {counts.total} observações</span>
         </div>
       </div>
 
@@ -58,7 +63,6 @@ export default function ParecerToolbar({
               key={t.key}
               className={`pt-chip pt-chip-${t.color}${active ? ' is-active' : ''}`}
               onClick={() => toggleTipo(t.key)}
-              title={active ? 'Ocultar' : 'Mostrar'}
             >
               <Icon size={13} />
               <span>{t.label}</span>
@@ -75,13 +79,24 @@ export default function ParecerToolbar({
           <option value="">Todos os blocos</option>
           {blocks.map(b => <option key={b} value={b}>{b}</option>)}
         </select>
+
+        <button
+          className={`pt-chip pt-chip-ghost${filters.showRejected ? ' is-active' : ''}`}
+          onClick={() => setFilters(f => ({ ...f, showRejected: !f.showRejected }))}
+          title="Mostrar rejeitadas"
+        >
+          {filters.showRejected ? <Eye size={13} /> : <EyeOff size={13} />}
+          <span>Rejeitadas</span>
+        </button>
       </div>
 
       <div className="pt-right">
-        <button className="btn-ghost" onClick={onRegenerate} disabled={regenerating}>
-          <RefreshCw size={13} className={regenerating ? 'is-spinning' : ''} />
-          {regenerating ? 'Gerando…' : 'Regenerar'}
-        </button>
+        {canRegenerate && (
+          <button className="btn-ghost" onClick={onRegenerate} disabled={regenerating}>
+            <RefreshCw size={13} className={regenerating ? 'is-spinning' : ''} />
+            {regenerating ? 'Gerando…' : 'Regenerar'}
+          </button>
+        )}
         <button className="btn-primary" disabled>
           <Download size={13} /> Exportar PDF
         </button>

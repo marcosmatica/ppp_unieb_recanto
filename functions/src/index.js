@@ -13,6 +13,7 @@ const { generateReport } = require('./report/generateReport')
 const { regenerateHighlightedHtml } = require('./report/regenerateHighlightedHtml')
 const { getDocumentViewerUrl } = require('./report/getDocumentViewerUrl')
 const { buildParecer } = require('./parecer/buildParecer')
+const { finalizarParecer } = require('./parecer/finalizarParecer')
 
 module.exports = {
   onPPPUploaded,
@@ -24,4 +25,5 @@ module.exports = {
   getDocumentViewerUrl,
   regenerateHighlightedHtml,
   buildParecer,
+  finalizarParecer,
 }

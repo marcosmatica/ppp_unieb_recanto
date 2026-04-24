@@ -1,12 +1,14 @@
 // src/hooks/useAnchorSync.js
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 
 export function useAnchorSync(iframeRef, observations) {
-  const [paragraphs, setParagraphs] = useState([])
-  const [ready, setReady] = useState(false)
-  const [iframeScrollY, setIframeScrollY] = useState(0)
-  const [activeAnchor, setActiveAnchor] = useState(null)
+  const [paragraphs, setParagraphs]   = useState([])
+  const [ready, setReady]             = useState(false)
+  const [iframeScrollY, setScrollY]   = useState(0)
+  const [activeAnchor, setActive]     = useState(null)
+  const [pickedAnchor, setPicked]     = useState(null)
+  const selectModeRef = useRef(false)
 
   useEffect(() => {
     function onMessage(event) {
@@ -16,56 +18,93 @@ export function useAnchorSync(iframeRef, observations) {
         iframeRef.current?.contentWindow?.postMessage({ type: 'PARECER_INIT' }, '*')
         return
       }
-
       if (type === 'PARECER_READY') {
         setParagraphs(event.data.paragraphs || [])
         setReady(true)
         return
       }
-
       if (type === 'PARECER_SCROLL') {
-        setIframeScrollY(event.data.scrollY || 0)
+        setScrollY(event.data.scrollY || 0)
         return
       }
-
       if (type === 'PARECER_PARAGRAPH_CLICKED') {
-        setActiveAnchor(event.data.anchorId)
+        setActive(event.data.anchorId)
+        return
+      }
+      if (type === 'PARECER_ANCHOR_PICKED') {
+        setPicked({ anchorId: event.data.anchorId, text: event.data.text })
+        setSelectMode(false)
+        return
+      }
+      if (type === 'PARECER_SELECT_CANCELLED') {
+        setSelectMode(false)
+        setPicked(null)
       }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [iframeRef])
 
-  const highlight = useCallback((anchorId) => {
-    setActiveAnchor(anchorId)
+  const counts = useMemo(() => {
+    const map = {}
+    for (const o of observations) {
+      if (!o.anchorId || o.status === 'rejected') continue
+      map[o.anchorId] = (map[o.anchorId] || 0) + 1
+    }
+    return map
+  }, [observations])
+
+  useEffect(() => {
+    if (!ready) return
     iframeRef.current?.contentWindow?.postMessage(
-      { type: 'PARECER_HIGHLIGHT', anchorId },
-      '*'
+      { type: 'PARECER_OBS_COUNTS', counts }, '*'
+    )
+  }, [counts, ready, iframeRef])
+
+  const highlight = useCallback((anchorId) => {
+    setActive(anchorId)
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: 'PARECER_HIGHLIGHT', anchorId }, '*'
     )
   }, [iframeRef])
 
   const hover = useCallback((anchorId) => {
     iframeRef.current?.contentWindow?.postMessage(
-      { type: 'PARECER_HOVER', anchorId },
-      '*'
+      { type: 'PARECER_HOVER', anchorId }, '*'
     )
   }, [iframeRef])
 
+  const setSelectMode = useCallback((enabled) => {
+    selectModeRef.current = enabled
+    if (enabled) setPicked(null)
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: 'PARECER_SELECT_MODE', enabled }, '*'
+    )
+  }, [iframeRef])
+
+  const clearPicked = useCallback(() => setPicked(null), [])
+
   const positions = computePositions(observations, paragraphs)
 
-  return { ready, paragraphs, positions, iframeScrollY, activeAnchor, highlight, hover }
+  return {
+    ready, paragraphs, positions, iframeScrollY, activeAnchor,
+    pickedAnchor, clearPicked,
+    highlight, hover, setSelectMode,
+  }
 }
 
 function computePositions(observations, paragraphs) {
-  if (!paragraphs.length) return []
+  if (!paragraphs.length) return {}
 
   const pMap = {}
   for (const p of paragraphs) pMap[p.id] = p
 
   const CARD_MIN_GAP = 12
-  const CARD_ESTIMATED_H = 120
+  const CARD_ESTIMATED_H = 130
 
-  const sorted = [...observations]
+  const visible = observations.filter(o => o.status !== 'rejected')
+
+  const sorted = [...visible]
     .map(obs => {
       const p = pMap[obs.anchorId]
       return { obs, top: p ? p.top : 9e9, hasAnchor: !!p }
@@ -73,14 +112,12 @@ function computePositions(observations, paragraphs) {
     .sort((a, b) => a.top - b.top)
 
   let cursor = 0
-  const withTop = sorted.map(({ obs, top, hasAnchor }) => {
+  const byId = {}
+  for (const { obs, top, hasAnchor } of sorted) {
     const desired = hasAnchor ? top : cursor
     const finalTop = Math.max(desired, cursor)
+    byId[obs.id] = { top: finalTop, hasAnchor }
     cursor = finalTop + CARD_ESTIMATED_H + CARD_MIN_GAP
-    return { id: obs.id, top: finalTop, hasAnchor }
-  })
-
-  const byId = {}
-  for (const r of withTop) byId[r.id] = r
+  }
   return byId
 }
