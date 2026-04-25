@@ -5,6 +5,7 @@ import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { parecerService } from '../services/parecerService'
 import { usePermissoes } from '../hooks/usePermissoes'
+import { useAuth } from '../contexts/AuthContext'
 import ParecerToolbar from '../components/parecer/ParecerToolbar'
 import ParecerLayout from '../components/parecer/ParecerLayout'
 import ParecerStatusBar from '../components/parecer/ParecerStatusBar'
@@ -29,6 +30,7 @@ class ParecerErrorBoundary extends Component {
 
 function ParecerPageInner() {
   const { analysisId } = useParams()
+  const { user }       = useAuth()
   const { podeEditarParecer, podeFinalizarParecer, podeReabrirParecer } = usePermissoes()
 
   const [analysis, setAnalysis]         = useState(null)
@@ -122,6 +124,18 @@ function ParecerPageInner() {
     }
   }
 
+  async function bulkAccept(tipo) {
+    const count = observations.filter(o => o.status === 'auto' && o.tipo === tipo).length
+    if (!count) return
+    if (!confirm(`Aceitar as ${count} observações do tipo "${tipo}" automaticamente?`)) return
+    try {
+      const n = await parecerService.bulkAcceptObservacoes(analysisId, tipo, user?.uid)
+      toast.success(`${n} observações confirmadas`)
+    } catch (e) {
+      toast.error('Erro: ' + e.message)
+    }
+  }
+
   if (loading) return <ParecerSkeleton />
 
   return (
@@ -145,6 +159,7 @@ function ParecerPageInner() {
         onToggleSelect={() => setSelectMode(s => !s)}
         onFinalizar={finalizar}
         onReabrir={reabrir}
+        onBulkAccept={bulkAccept}
         finalizing={finalizing}
       />
       <ParecerLayout

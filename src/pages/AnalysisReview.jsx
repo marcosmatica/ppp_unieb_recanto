@@ -24,6 +24,8 @@ import '../components/DocumentViewer.css'
 import ExcerptCards from '../components/ExcerptCards'
 import ReviewActions from '../components/ReviewActions'
 import '../components/ReviewActions.css'
+import { useColResize } from '../hooks/useColResize'
+import ResizeBorder from '../components/ResizeBorder'
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -94,52 +96,6 @@ const STATUS_DOT = {
 const COL_DEFAULTS = { drawer: 280, card: 380 }
 const COL_MIN      = { drawer: 200, card: 260 }
 const COL_MAX      = { drawer: 420, card: 520 }
-
-// ─── Hook resize ─────────────────────────────────────────────────────────────
-function useColResize(colKey, defaultWidth) {
-  const [width,      setWidth]      = useState(defaultWidth)
-  const [isDragging, setIsDragging] = useState(false)
-  const startX = useRef(0)
-  const startW = useRef(0)
-
-  const onMouseDown = useCallback((e) => {
-    e.preventDefault()
-    startX.current = e.clientX
-    startW.current = width
-    setIsDragging(true)
-    document.body.style.cursor     = 'col-resize'
-    document.body.style.userSelect = 'none'
-
-    const onMove = (ev) => {
-      const delta = colKey === 'card'
-        ? startX.current - ev.clientX
-        : ev.clientX - startX.current
-      const next = Math.min(COL_MAX[colKey], Math.max(COL_MIN[colKey], startW.current + delta))
-      setWidth(next)
-    }
-    const onUp = () => {
-      setIsDragging(false)
-      document.body.style.cursor     = ''
-      document.body.style.userSelect = ''
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
-    }
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
-  }, [width, colKey])
-
-  return [width, onMouseDown, isDragging]
-}
-
-// ─── ResizeBorder ─────────────────────────────────────────────────────────────
-function ResizeBorder({ onMouseDown, isDragging, side = 'right' }) {
-  return (
-    <div
-      className={`resize-border resize-border--${side}${isDragging ? ' resize-border--active' : ''}`}
-      onMouseDown={onMouseDown}
-    />
-  )
-}
 
 // ─── ProcessingStatus ────────────────────────────────────────────────────────
 const PROCESSING_STEPS = [

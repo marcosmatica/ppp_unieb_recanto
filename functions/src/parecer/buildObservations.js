@@ -20,6 +20,14 @@ const TIPO_BY_STATUS = {
   not_applicable:    'info',
 }
 
+function effectiveElementStatus(el) {
+  if (el.humanReview?.decision === 'agree') return el.aiResult?.status
+  if (el.humanReview?.overrideStatus)       return el.humanReview.overrideStatus
+  return el.aiResult?.status
+}
+
+const APPROVED_STATUSES = ['adequate', 'adequate_implicit', 'overridden', 'not_applicable']
+
 function buildObservations(elementResults, paragraphs) {
   const observations = []
 
@@ -39,7 +47,7 @@ function buildObservations(elementResults, paragraphs) {
       normRef:     el.normRef || null,
       tipo:        TIPO_BY_STATUS[status] || 'info',
       severidade:  SEVERITY_BY_STATUS[status] || 1,
-      status:      'auto',
+      status: APPROVED_STATUSES.includes(effectiveElementStatus(el)) ? 'confirmed' : 'auto',
       isCritical:  el.isCritical || false,
       isNewIn2026: el.isNewIn2026 || false,
     }

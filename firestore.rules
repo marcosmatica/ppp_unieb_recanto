@@ -47,10 +47,7 @@ service cloud.firestore {
 
       match /observations/{obsId} {
         allow read:  if isWhitelisted();
-        allow write: if isWhitelisted() && (
-                       role() in ['supervisor','admin'] ||
-                       get(/databases/$(database)/documents/analyses/$(analysisId)).data.analystId == request.auth.uid
-                     );
+        allow write: if isWhitelisted();
       }
     }
 

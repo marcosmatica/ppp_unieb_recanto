@@ -1,6 +1,6 @@
 // src/components/parecer/ParecerStatusBar.jsx
 
-import { Sparkles, Check, User as UserIcon, X, Lock, Unlock, Plus } from 'lucide-react'
+import { Sparkles, Check, User as UserIcon, X, Lock, Unlock, Plus, CheckCheck } from 'lucide-react'
 
 export default function ParecerStatusBar({
   observations,
@@ -12,28 +12,30 @@ export default function ParecerStatusBar({
   onToggleSelect,
   onFinalizar,
   onReabrir,
+  onBulkAccept,
   finalizing,
 }) {
   const counts = {
-    auto:      observations.filter(o => o.status === 'auto').length,
-    confirmed: observations.filter(o => o.status === 'confirmed').length,
-    manual:    observations.filter(o => o.status === 'manual').length,
-    rejected:  observations.filter(o => o.status === 'rejected').length,
+    auto:            observations.filter(o => o.status === 'auto').length,
+    confirmed:       observations.filter(o => o.status === 'confirmed').length,
+    manual:          observations.filter(o => o.status === 'manual').length,
+    rejected:        observations.filter(o => o.status === 'rejected').length,
+    autoObservacoes: observations.filter(o => o.status === 'auto' && o.tipo === 'observacao').length,
   }
 
   const finalized = parecerStatus === 'finalizado'
-  const pending = counts.auto
+  const pending   = counts.auto
 
   return (
     <div className={`parecer-status ${finalized ? 'is-finalized' : ''}`}>
       <div className="ps-counts">
-        <span className="ps-count ps-auto" title="Geradas pela IA, aguardando revisão">
+        <span className="ps-count ps-auto" title="Aguardando revisão">
           <Sparkles size={12} /> <b>{counts.auto}</b> pendentes
         </span>
-        <span className="ps-count ps-confirmed" title="Revisadas e aceitas">
+        <span className="ps-count ps-confirmed" title="Aceitas">
           <Check size={12} /> <b>{counts.confirmed}</b> confirmadas
         </span>
-        <span className="ps-count ps-manual" title="Adicionadas manualmente">
+        <span className="ps-count ps-manual" title="Manuais">
           <UserIcon size={12} /> <b>{counts.manual}</b> manuais
         </span>
         {counts.rejected > 0 && (
@@ -44,6 +46,16 @@ export default function ParecerStatusBar({
       </div>
 
       <div className="ps-actions">
+        {podeEditar && !finalized && counts.autoObservacoes > 0 && (
+          <button
+            className="btn-secondary"
+            onClick={() => onBulkAccept('observacao')}
+            title={`Aceitar todas as ${counts.autoObservacoes} observações verdes pendentes`}
+          >
+            <CheckCheck size={13} /> Aceitar observações ({counts.autoObservacoes})
+          </button>
+        )}
+
         {podeEditar && !finalized && (
           <button
             className={`btn-secondary ${selectMode ? 'is-active' : ''}`}

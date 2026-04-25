@@ -99,25 +99,27 @@ function computePositions(observations, paragraphs) {
   const pMap = {}
   for (const p of paragraphs) pMap[p.id] = p
 
-  const CARD_MIN_GAP = 12
-  const CARD_ESTIMATED_H = 130
+  const CARD_MIN_GAP   = 12
+  const CARD_H_PENDING  = 160
+  const CARD_H_CONFIRM  = 50
 
   const visible = observations.filter(o => o.status !== 'rejected')
 
   const sorted = [...visible]
-    .map(obs => {
-      const p = pMap[obs.anchorId]
-      return { obs, top: p ? p.top : 9e9, hasAnchor: !!p }
-    })
-    .sort((a, b) => a.top - b.top)
+      .map(obs => {
+        const p = pMap[obs.anchorId]
+        return { obs, top: p ? p.top : 9e9, hasAnchor: !!p }
+      })
+      .sort((a, b) => a.top - b.top)
 
   let cursor = 0
   const byId = {}
   for (const { obs, top, hasAnchor } of sorted) {
-    const desired = hasAnchor ? top : cursor
+    const desired  = hasAnchor ? top : cursor
     const finalTop = Math.max(desired, cursor)
-    byId[obs.id] = { top: finalTop, hasAnchor }
-    cursor = finalTop + CARD_ESTIMATED_H + CARD_MIN_GAP
+    byId[obs.id]   = { top: finalTop, hasAnchor }
+    const h = obs.status === 'confirmed' ? CARD_H_CONFIRM : CARD_H_PENDING
+    cursor  = finalTop + h + CARD_MIN_GAP
   }
   return byId
 }

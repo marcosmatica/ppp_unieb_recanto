@@ -1,8 +1,9 @@
 // src/services/parecerService.js
 
 import {
-  collection, doc, getDoc, getDocs, onSnapshot,
-  query, orderBy, updateDoc, addDoc, deleteDoc, serverTimestamp,
+    collection, doc, getDoc, getDocs, onSnapshot,
+    query, orderBy, where, writeBatch,
+    updateDoc, addDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore'
 import { httpsCallable } from 'firebase/functions'
 import { db, functions } from './firebase'
@@ -94,6 +95,24 @@ export const parecerService = {
     const { data } = await fn({ analysisId, force })
     return data
   },
+
+    async bulkAcceptObservacoes(analysisId, tipo, userId) {
+        const q = query(
+            collection(db, 'analyses', analysisId, 'observations'),
+            where('tipo', '==', tipo),
+            where('status', '==', 'auto')
+        )
+        const snap = await getDocs(q)
+        if (!snap.size) return 0
+        const batch = writeBatch(db)
+        snap.docs.forEach(d => batch.update(d.ref, {
+            status: 'confirmed',
+            updatedAt: serverTimestamp(),
+            updatedBy: userId || null,
+        }))
+        await batch.commit()
+        return snap.size
+    },
 
   async finalizar(analysisId, reopen = false) {
     const fn = httpsCallable(functions, 'finalizarParecer')
