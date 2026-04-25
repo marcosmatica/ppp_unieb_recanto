@@ -2,14 +2,14 @@
 
 'use strict'
 
-const { onCall, HttpsError }   = require('firebase-functions/v2/https')
+const { onCall, HttpsError }      = require('firebase-functions/v2/https')
 const { getFirestore, Timestamp } = require('firebase-admin/firestore')
-const { getStorage }            = require('firebase-admin/storage')
-const { logger }                = require('firebase-functions')
-const { v4: uuidv4 }            = require('uuid')
-const chromium                  = require('@sparticuz/chromium')
-const puppeteer                 = require('puppeteer-core')
-const { renderParecerHtml }     = require('./parecerTemplate')
+const { getStorage }              = require('firebase-admin/storage')
+const { logger }                  = require('firebase-functions')
+const { v4: uuidv4 }              = require('uuid')
+const chromium                    = require('@sparticuz/chromium')
+const puppeteer                   = require('puppeteer-core')
+const { renderParecerHtml }       = require('./parecerTemplate')
 
 const db     = getFirestore()
 const BUCKET = 'unieb-recanto.firebasestorage.app'
@@ -33,17 +33,15 @@ exports.exportParecerPdf = onCall(
     const analysisSnap = await analysisRef.get()
     if (!analysisSnap.exists) throw new HttpsError('not-found', 'Análise não encontrada.')
 
-    const analysis = analysisSnap.data()
-    const anchoredPath = analysis?.parecer?.anchoredHtmlPath
+    const analysis      = analysisSnap.data()
+    const anchoredPath  = analysis?.parecer?.anchoredHtmlPath
     if (!anchoredPath) {
-      throw new HttpsError('failed-precondition', 'Gere o parecer primeiro (HTML anotado não encontrado).')
+      throw new HttpsError('failed-precondition', 'Gere o parecer primeiro.')
     }
 
     const bucket = getStorage().bucket(BUCKET)
-
     const [anchoredBuf] = await bucket.file(anchoredPath).download()
-    const anchoredFull  = anchoredBuf.toString('utf-8')
-    const { body, paragraphs } = extractBodyAndParagraphs(anchoredFull)
+    const { body, paragraphs } = extractBodyAndParagraphs(anchoredBuf.toString('utf-8'))
 
     const obsSnap = await analysisRef.collection('observations').orderBy('createdAt', 'asc').get()
     const observations = obsSnap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -68,6 +66,23 @@ exports.exportParecerPdf = onCall(
     try {
       const page = await browser.newPage()
       await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 })
+
+      await page.evaluate(() => {
+        const MARGIN_TOP = 8
+        const anchors = Array.from(document.querySelectorAll('[data-anchor]'))
+
+        for (const anchor of anchors) {
+          const sidenotes = Array.from(anchor.querySelectorAll('.sidenote'))
+          if (sidenotes.length <= 1) continue
+
+          let cursor = 0
+          for (const sn of sidenotes) {
+            sn.style.top = `${cursor}px`
+            cursor += sn.offsetHeight + MARGIN_TOP
+          }
+          anchor.style.minHeight = `${cursor}px`
+        }
+      })
 
       pdfBuffer = await page.pdf({
         format: 'A4',
@@ -96,7 +111,7 @@ exports.exportParecerPdf = onCall(
       },
     })
 
-    const enc = encodeURIComponent(storagePath)
+    const enc         = encodeURIComponent(storagePath)
     const downloadUrl = `https://firebasestorage.googleapis.com/v0/b/${BUCKET}/o/${enc}?alt=media&token=${token}`
 
     await analysisRef.update({
@@ -122,18 +137,16 @@ exports.exportParecerPdf = onCall(
 function extractBodyAndParagraphs(html) {
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
   const rawBody   = bodyMatch ? bodyMatch[1] : html
-
-  const body = rawBody
+  const body      = rawBody
     .replace(/<script[\s\S]*?<\/script>/gi, '')
     .replace(/<div id="selecting-banner"[\s\S]*?<\/div>/gi, '')
 
   const paragraphs = []
-  const re = /data-anchor="(anc-\d+)"[^>]*>([\s\S]*?)</gi
+  const re = /data-anchor="(anc-\d+)"/gi
   let m
   while ((m = re.exec(body)) !== null) {
-    paragraphs.push({ id: m[1], text: m[2].replace(/<[^>]+>/g, '').trim() })
+    paragraphs.push({ id: m[1] })
   }
-
   return { body, paragraphs }
 }
 

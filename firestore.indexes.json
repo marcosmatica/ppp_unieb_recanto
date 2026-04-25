@@ -1,10 +1,26 @@
 {
   "indexes": [
     {
+      "collectionGroup": "observations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status",    "order": "ASCENDING"  },
+        { "fieldPath": "createdAt", "order": "ASCENDING"  }
+      ]
+    },
+    {
+      "collectionGroup": "observations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "blockCode",  "order": "ASCENDING" },
+        { "fieldPath": "severidade", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "schoolVisits",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "ciId", "order": "ASCENDING" },
+        { "fieldPath": "ciId",      "order": "ASCENDING"  },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     },
@@ -12,16 +28,24 @@
       "collectionGroup": "schoolVisits",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "cre", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "cre",       "order": "ASCENDING"  },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "schoolVisits",
+      "collectionGroup": "analyses",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "schoolId", "order": "ASCENDING" },
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
+        { "fieldPath": "analystId", "order": "ASCENDING"  },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "analyses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cre",       "order": "ASCENDING"  },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     }
   ],

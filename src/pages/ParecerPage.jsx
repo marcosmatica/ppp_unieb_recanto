@@ -1,6 +1,6 @@
 // src/pages/ParecerPage.jsx
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Component } from 'react'
 import { useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { parecerService } from '../services/parecerService'
@@ -8,9 +8,26 @@ import { usePermissoes } from '../hooks/usePermissoes'
 import ParecerToolbar from '../components/parecer/ParecerToolbar'
 import ParecerLayout from '../components/parecer/ParecerLayout'
 import ParecerStatusBar from '../components/parecer/ParecerStatusBar'
+import ParecerSkeleton from '../components/parecer/ParecerSkeleton'
 import '../styles/parecer.css'
 
-export default function ParecerPage() {
+class ParecerErrorBoundary extends Component {
+  state = { error: null }
+  static getDerivedStateFromError(e) { return { error: e } }
+  render() {
+    if (this.state.error) return (
+      <div style={{ padding: '2rem', color: 'var(--red-700)', fontFamily: 'DM Sans, sans-serif' }}>
+        <strong>Erro ao carregar o parecer:</strong>
+        <pre style={{ marginTop: 8, fontSize: 12, whiteSpace: 'pre-wrap' }}>
+          {this.state.error.message}
+        </pre>
+      </div>
+    )
+    return this.props.children
+  }
+}
+
+function ParecerPageInner() {
   const { analysisId } = useParams()
   const { podeEditarParecer, podeFinalizarParecer, podeReabrirParecer } = usePermissoes()
 
@@ -39,14 +56,13 @@ export default function ParecerPage() {
         const a = await parecerService.getAnalysis(analysisId)
         if (cancelled) return
         setAnalysis(a)
-
         unsubA = parecerService.subscribeAnalysis(analysisId, setAnalysis)
         unsubO = parecerService.subscribeObservations(analysisId, setObservations)
-
         if (!a?.parecer?.generatedAt) {
           await generate(false)
         }
       } catch (e) {
+        console.error('[ParecerPage] erro:', e)
         toast.error('Erro ao carregar parecer: ' + e.message)
       } finally {
         if (!cancelled) setLoading(false)
@@ -68,7 +84,7 @@ export default function ParecerPage() {
           await generate(true)
         }
       } else {
-        toast.error('Erro: ' + e.message)
+        toast.error('Erro ao gerar: ' + e.message)
       }
     } finally {
       setRegenerating(false)
@@ -82,7 +98,6 @@ export default function ParecerPage() {
       return
     }
     if (!confirm('Finalizar o parecer? Edições ficarão bloqueadas até que seja reaberto.')) return
-
     setFinalizing(true)
     try {
       await parecerService.finalizar(analysisId, false)
@@ -107,13 +122,7 @@ export default function ParecerPage() {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="parecer-page">
-        <div className="parecer-loader"><div className="spinner" /></div>
-      </div>
-    )
-  }
+  if (loading) return <ParecerSkeleton />
 
   return (
     <div className="parecer-page">
@@ -126,7 +135,6 @@ export default function ParecerPage() {
         regenerating={regenerating}
         canRegenerate={!finalized && podeEditarParecer}
       />
-
       <ParecerStatusBar
         observations={observations}
         parecerStatus={parecerStatus}
@@ -139,7 +147,6 @@ export default function ParecerPage() {
         onReabrir={reabrir}
         finalizing={finalizing}
       />
-
       <ParecerLayout
         analysisId={analysisId}
         htmlUrl={analysis?.parecer?.anchoredHtmlUrl}
@@ -150,5 +157,13 @@ export default function ParecerPage() {
         onSelectModeHandled={() => setSelectMode(false)}
       />
     </div>
+  )
+}
+
+export default function ParecerPage() {
+  return (
+    <ParecerErrorBoundary>
+      <ParecerPageInner />
+    </ParecerErrorBoundary>
   )
 }

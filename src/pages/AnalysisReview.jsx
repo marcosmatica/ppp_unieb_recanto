@@ -14,7 +14,7 @@ import {
   AlertCircle, AlertTriangle, CheckCircle2, MinusCircle,
   ChevronRight, SkipForward, MessageSquare,
   ThumbsUp, ThumbsDown, FileText, ArrowLeft, X, Loader2,
-  ChevronDown, ChevronLeft,
+  ChevronDown, ChevronLeft, BookOpen,
 } from 'lucide-react'
 import './AnalysisReview.css'
 import DeepReviewBanner from '../components/DeepReviewBanner'
@@ -504,6 +504,9 @@ export default function AnalysisReview() {
           <span className="review-meta">{analysis?.schoolCode} · PPP {analysis?.year}</span>
         </div>
         <div className="review-header-actions">
+          <Link to={`/analyses/${analysisId}/parecer`} className="btn-parecer btn-parecer--secondary">
+            <BookOpen size={14} /> Parecer anotado
+          </Link>
           <Link to={`/analyses/${analysisId}/report`} className="btn-parecer">
             <FileText size={14} /> Gerar parecer
           </Link>
