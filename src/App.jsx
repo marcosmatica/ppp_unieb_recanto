@@ -35,12 +35,21 @@ function PageLoader() {
   )
 }
 
+function UnauthorizedPage() {
+  return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: '1rem' }}>
+        <p style={{ fontFamily: 'Sora, sans-serif', color: '#0b2d5b', fontSize: 16 }}>
+          E-mail não autorizado. Contate o administrador da UNIEB.
+        </p>
+      </div>
+  )
+}
+
 function RequireAuth({ children }) {
-  const { user, loading, unauthorized, showRegionalSelector } = useAuth()
+  const { user, loading, unauthorized } = useAuth()
   if (loading) return <PageLoader />
   if (unauthorized) return <UnauthorizedPage />
   if (!user) return <Navigate to="/login" replace />
-  if (showRegionalSelector) return <RegionalSelector />
   return children
 }
 
