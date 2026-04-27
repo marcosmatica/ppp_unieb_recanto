@@ -25,24 +25,18 @@ service cloud.firestore {
 
     match /schools/{schoolId} {
       allow read:  if isWhitelisted();
-      allow write: if isWhitelisted() && role() in ['admin','supervisor'];
+      allow write: if isWhitelisted() && role() in ['admin','supervisor', 'analyst'];
     }
 
     match /analyses/{analysisId} {
       allow read:   if isWhitelisted();
-      allow create: if isWhitelisted() && role() in ['analyst','supervisor','admin'];
-      allow update: if isWhitelisted() && (
-                      role() in ['supervisor','admin'] ||
-                      resource.data.analystId == request.auth.uid
-                    );
+      allow create: if isWhitelisted();
+      allow update: if isWhitelisted();
       allow delete: if isAdmin();
 
       match /elementResults/{elementId} {
         allow read:  if isWhitelisted();
-        allow write: if isWhitelisted() && (
-                       role() in ['supervisor','admin'] ||
-                       get(/databases/$(database)/documents/analyses/$(analysisId)).data.analystId == request.auth.uid
-                     );
+        allow write: if isWhitelisted();
       }
 
       match /observations/{obsId} {
