@@ -65,24 +65,8 @@ exports.exportParecerPdf = onCall(
     let pdfBuffer
     try {
       const page = await browser.newPage()
+      await page.emulateMediaType('print')
       await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 })
-
-      await page.evaluate(() => {
-        const MARGIN_TOP = 8
-        const anchors = Array.from(document.querySelectorAll('[data-anchor]'))
-
-        for (const anchor of anchors) {
-          const sidenotes = Array.from(anchor.querySelectorAll('.sidenote'))
-          if (sidenotes.length <= 1) continue
-
-          let cursor = 0
-          for (const sn of sidenotes) {
-            sn.style.top = `${cursor}px`
-            cursor += sn.offsetHeight + MARGIN_TOP
-          }
-          anchor.style.minHeight = `${cursor}px`
-        }
-      })
 
       pdfBuffer = await page.pdf({
         format: 'A4',
