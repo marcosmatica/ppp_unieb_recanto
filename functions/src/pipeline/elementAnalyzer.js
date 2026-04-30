@@ -17,7 +17,7 @@ const { resolveMode, getModeConfig } = require('./interpretationConfig')
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL_FAST        = 'claude-haiku-4-5-20251001'
 const MODEL_DEEP        = 'claude-sonnet-4-6'
-const MAX_TOKENS_BATCH  = 4096
+const MAX_TOKENS_BATCH  = 6000
 const MAX_TOKENS_SINGLE = 1024
 const CONTEXT_CHARS     = 10000
 const DEEP_SCORE_THRESH = 0.5
@@ -380,9 +380,16 @@ async function callClaude(prompt, model, maxTokens) {
     throw new Error(`Claude API ${response.status}: ${err}`)
   }
 
-  const data  = await response.json()
-  const text  = data.content?.find(b => b.type === 'text')?.text || ''
-  const clean = text.replace(/```json|```/g, '').trim()
+  const data       = await response.json()
+  const stopReason = data.stop_reason
+  const text       = data.content?.find(b => b.type === 'text')?.text || ''
+  const clean      = text.replace(/```json|```/g, '').trim()
+
+  if (stopReason === 'max_tokens') {
+    logger.warn('Resposta truncada por max_tokens', { model, maxTokens, chars: text.length })
+    throw new Error(`Resposta truncada (max_tokens=${maxTokens}). Reduza o bloco ou aumente max_tokens.`)
+  }
+
   return JSON.parse(clean)
 }
 
