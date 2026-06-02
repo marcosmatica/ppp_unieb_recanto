@@ -122,6 +122,9 @@
 .override-adequate .ra-override-icon  { background: var(--color-adequate-bg, #f0fdf4); color: var(--green-600); }
 .override-adequate .ra-override-label { color: var(--green-700, #15803d); }
 
+.override-adequate-implicit .ra-override-icon  { background: #f0fdfa; color: #0d9488; }
+.override-adequate-implicit .ra-override-label { color: #0f766e; }
+
 .override-attention .ra-override-icon  { background: var(--color-attention-bg, #fefce8); color: var(--amber-500, #f59e0b); }
 .override-attention .ra-override-label { color: var(--amber-700, #b45309); }
 

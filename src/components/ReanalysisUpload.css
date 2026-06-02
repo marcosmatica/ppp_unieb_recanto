@@ -1,0 +1,253 @@
+/* src/components/ReanalysisUpload.css */
+
+.rau-wrap {
+  border-top: 1px solid var(--gray-100);
+  background: var(--white);
+}
+
+/* ── Gatilho ──────────────────────────────────────────────────────────────── */
+.rau-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  gap: 10px;
+  transition: background .12s;
+}
+.rau-trigger:hover:not(:disabled) { background: var(--gray-50); }
+.rau-trigger:disabled { cursor: not-allowed; }
+.rau-trigger--open { background: var(--gray-50); }
+.rau-trigger--running { cursor: not-allowed; }
+
+.rau-trig-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--gray-600);
+  min-width: 0;
+}
+
+.rau-trig-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  min-width: 0;
+}
+.rau-trig-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+.rau-trig-sub {
+  font-size: 11.5px;
+  color: var(--gray-500);
+}
+.rau-trig-sub--error { color: var(--red-600, #dc2626); }
+
+.rau-icon--done  { color: var(--green-600); }
+.rau-icon--error { color: var(--red-500); }
+.rau-chevron { color: var(--gray-400); flex-shrink: 0; }
+
+/* ── Processamento em andamento ──────────────────────────────────────────── */
+.rau-processing {
+  padding: 10px 16px 14px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--gray-100);
+}
+.rau-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--gray-400);
+}
+.rau-step--done   { color: var(--green-600); }
+.rau-step--active { color: var(--gray-700); font-weight: 500; }
+
+.rau-step-dot {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--gray-100);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.rau-step--done  .rau-step-dot { background: var(--green-50, #f0fdf4); color: var(--green-600); }
+.rau-step--active .rau-step-dot { background: var(--blue-50, #eff6ff); color: var(--blue-500, #3b82f6); }
+
+/* ── Corpo expandido ─────────────────────────────────────────────────────── */
+.rau-body {
+  padding: 0 16px 14px;
+  border-top: 1px solid var(--gray-100);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: rau-slide-in .15s ease-out;
+}
+@keyframes rau-slide-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.rau-hint {
+  font-size: 12.5px;
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0;
+  padding-top: 10px;
+}
+.rau-hint strong { color: var(--gray-800); }
+
+/* ── Drop zone ───────────────────────────────────────────────────────────── */
+.rau-dropzone {
+  border: 1.5px dashed var(--gray-300);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+  cursor: pointer;
+  transition: border-color .12s, background .12s;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rau-dropzone:hover,
+.rau-dropzone--over {
+  border-color: var(--blue-400, #60a5fa);
+  background: var(--blue-50, #eff6ff);
+}
+.rau-dropzone--selected {
+  border-style: solid;
+  border-color: var(--green-400, #4ade80);
+  background: var(--green-50, #f0fdf4);
+}
+
+.rau-dz-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 16px;
+  color: var(--gray-400);
+  text-align: center;
+}
+.rau-dz-empty p { font-size: 13px; color: var(--gray-600); margin: 0; }
+.rau-dz-link { color: var(--blue-500, #3b82f6); font-weight: 500; }
+.rau-dz-types { font-size: 11.5px; color: var(--gray-400); }
+
+.rau-dz-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 14px;
+  width: 100%;
+  color: var(--green-700, #15803d);
+}
+.rau-dz-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.rau-dz-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-800);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rau-dz-size { font-size: 11.5px; color: var(--gray-500); }
+
+.rau-dz-clear {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--gray-400);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  transition: color .12s, background .12s;
+  flex-shrink: 0;
+}
+.rau-dz-clear:hover { color: var(--red-500); background: var(--red-50, #fef2f2); }
+
+/* ── Progresso do upload ─────────────────────────────────────────────────── */
+.rau-progress-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rau-progress-bar {
+  flex: 1;
+  height: 4px;
+  background: var(--gray-200);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.rau-progress-fill {
+  height: 100%;
+  background: var(--blue-500, #3b82f6);
+  border-radius: 2px;
+  transition: width .15s ease;
+}
+.rau-progress-label {
+  font-size: 11.5px;
+  color: var(--gray-500);
+  white-space: nowrap;
+}
+
+/* ── Rodapé / Botões ─────────────────────────────────────────────────────── */
+.rau-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.rau-cancel {
+  background: none;
+  border: 1px solid var(--gray-300);
+  color: var(--gray-600);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.rau-cancel:hover { background: var(--gray-50); border-color: var(--gray-400); }
+
+.rau-submit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--blue-600, #2563eb);
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background .12s, opacity .12s;
+}
+.rau-submit:hover:not(:disabled) { background: var(--blue-700, #1d4ed8); }
+.rau-submit:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Spinner ─────────────────────────────────────────────────────────────── */
+.rau-spin {
+  animation: rau-rotate 1s linear infinite;
+}
+@keyframes rau-rotate {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

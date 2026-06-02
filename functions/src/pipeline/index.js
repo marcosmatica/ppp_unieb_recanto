@@ -43,6 +43,9 @@ exports.onPPPUploaded = onObjectFinalized(
     const segments   = filePath.split('/')
     const analysisId = segments[1]
     const fileName   = segments[2]
+
+    // Arquivos de reanálise são tratados por triggerReanalysis — ignorar aqui
+    if (fileName.startsWith('ppp_updated')) return
     const pppYear    = fileName.startsWith('ppp2026') ? 2026 : 2025
 
     const analysisRef = db.collection('analyses').doc(analysisId)
@@ -214,5 +217,5 @@ function computeStats(results) {
   results.forEach(r => { counts[r.effectiveStatus] = (counts[r.effectiveStatus] || 0) + 1 })
   const total    = results.length
   const approved = counts.adequate + counts.adequate_implicit
-  return { ...counts, total, score: total > 0 ? Math.round((approved / total) * 100) : 0 }
+  return { ...counts, total, confirmed: 0, overridden: 0, score: total > 0 ? Math.round((approved / total) * 100) : 0 }
 }

@@ -143,10 +143,6 @@ export const elementResultsService = {
 // ─── Upload PPP ──────────────────────────────────────────────────────────────
 
 export const uploadService = {
-  /**
-   * Faz upload do arquivo PPP para o Cloud Storage.
-   * Retorna uma Promise com progresso via onProgress(0–100).
-   */
   uploadPPP({analysisId, file, year, onProgress}) {
     const ext = file.name.split('.').pop().toLowerCase()
     const path = `analyses/${analysisId}/ppp${year}.${ext}`
@@ -161,6 +157,31 @@ export const uploadService = {
           () => getDownloadURL(task.snapshot.ref).then(url => resolve({path, url}))
       )
     })
+  },
+
+  uploadUpdatedPPP({ analysisId, file, onProgress }) {
+    const ext = file.name.split('.').pop().toLowerCase()
+    const path = `analyses/${analysisId}/ppp_updated.${ext}`
+    const storageRef = ref(storage, path)
+    const task = uploadBytesResumable(storageRef, file)
+
+    return new Promise((resolve, reject) => {
+      task.on(
+        'state_changed',
+        snap => onProgress?.(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+        reject,
+        () => getDownloadURL(task.snapshot.ref).then(url => resolve({ path, url }))
+      )
+    })
+  },
+}
+
+// ─── Reanálise ───────────────────────────────────────────────────────────────
+
+export const reanalysisService = {
+  async trigger(analysisId, updatedFilePath) {
+    const fn = httpsCallable(functions, 'triggerReanalysis')
+    return fn({ analysisId, updatedFilePath })
   },
 }
 

@@ -9,6 +9,7 @@ const { onPPPUploaded } = require('./pipeline/index')
 const { triggerDeepReview } = require('./pipeline/deepReview')
 const { onElementResultUpdated, submitHumanReview } = require('./pipeline/comparator')
 const { aggregateFeedback } = require('./pipeline/feedbackAggregator')
+const { triggerReanalysis } = require('./pipeline/reanalysis')
 const { generateReport } = require('./report/generateReport')
 const { regenerateHighlightedHtml } = require('./report/regenerateHighlightedHtml')
 const { getDocumentViewerUrl } = require('./report/getDocumentViewerUrl')
@@ -22,6 +23,7 @@ module.exports = {
   onElementResultUpdated,
   submitHumanReview,
   aggregateFeedback,
+  triggerReanalysis,
   generateReport,
   getDocumentViewerUrl,
   regenerateHighlightedHtml,

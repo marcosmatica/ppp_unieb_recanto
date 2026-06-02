@@ -5,16 +5,17 @@
 // para que "discordar" sempre faça sentido semântico.
 //
 // Lógica:
-//   critical  → confirmar crítico | marcar atenção | marcar adequado
-//   attention → confirmar atenção | marcar crítico | marcar adequado
-//   adequate / adequate_implicit → confirmar adequado | marcar atenção | marcar crítico
-//   not_applicable → confirmar N/A | marcar adequado
+//   critical          → confirmar crítico          | marcar atenção | marcar adequado
+//   attention         → confirmar atenção           | marcar crítico | marcar adequado
+//   adequate          → confirmar adequado          | marcar adequado (implícito) | marcar atenção | marcar crítico
+//   adequate_implicit → confirmar adequado (impl.)  | marcar adequado | marcar atenção | marcar crítico
+//   not_applicable    → confirmar N/A               | marcar adequado
 
 import { useState } from 'react'
 import {
   ThumbsUp, ThumbsDown, SkipForward, MessageSquare,
   AlertCircle, AlertTriangle, CheckCircle2, MinusCircle,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Eye,
 } from 'lucide-react'
 import './ReviewActions.css'
 
@@ -55,6 +56,13 @@ const OVERRIDE_OPTIONS = {
   ],
   adequate: [
     {
+      status:    'adequate_implicit',
+      label:     'Marcar como Adequado (Implícito)',
+      sublabel:  'Adequado apenas contextualmente',
+      icon:      Eye,
+      colorClass: 'override-adequate-implicit',
+    },
+    {
       status:    'attention',
       label:     'Marcar como Atenção',
       sublabel:  'Presente, mas insuficiente',
@@ -70,6 +78,13 @@ const OVERRIDE_OPTIONS = {
     },
   ],
   adequate_implicit: [
+    {
+      status:    'adequate',
+      label:     'Marcar como Adequado',
+      sublabel:  'Elemento explicitamente satisfatório',
+      icon:      CheckCircle2,
+      colorClass: 'override-adequate',
+    },
     {
       status:    'attention',
       label:     'Marcar como Atenção',

@@ -14,11 +14,13 @@ import {
   AlertCircle, AlertTriangle, CheckCircle2, MinusCircle,
   ChevronRight, SkipForward, MessageSquare,
   ThumbsUp, ThumbsDown, FileText, ArrowLeft, X, Loader2,
-  ChevronDown, ChevronLeft, BookOpen,
+  ChevronDown, ChevronLeft, BookOpen, RefreshCw,
 } from 'lucide-react'
 import './AnalysisReview.css'
 import DeepReviewBanner from '../components/DeepReviewBanner'
 import '../components/DeepReviewBanner.css'
+import ReanalysisUpload from '../components/ReanalysisUpload'
+import '../components/ReanalysisUpload.css'
 import DocumentViewer from '../components/DocumentViewer'
 import '../components/DocumentViewer.css'
 import ExcerptCards from '../components/ExcerptCards'
@@ -474,6 +476,11 @@ export default function AnalysisReview() {
         <DeepReviewBanner elements={elements} analysisId={analysisId} />
       )}
 
+      {/* ── Reanálise com versão atualizada ─────────────────────────────── */}
+      {isReady && (
+        <ReanalysisUpload analysis={analysis} analysisId={analysisId} />
+      )}
+
       {/* ── Body ───────────────────────────────────────────────────────── */}
       <div className="review-body">
 
@@ -591,6 +598,35 @@ function MarkPopover({ element: el, onClose, onNavigate }) {
 // src/pages/AnalysisReview.jsx por este bloco completo.
 // Nada mais no arquivo precisa mudar.
 
+function PreviousAiResult({ result }) {
+  const [open, setOpen] = useState(false)
+  const cfg  = STATUS_CONFIG[result.status] || STATUS_CONFIG.adequate
+  const Icon = cfg.icon
+  return (
+    <div className="ec-prev-ai">
+      <button className="ec-prev-ai-toggle" onClick={() => setOpen(v => !v)}>
+        <RefreshCw size={11} />
+        <span>Análise anterior</span>
+        <span className={`ec-prev-ai-pill status-${cfg.color}`}>
+          <Icon size={10} /> {cfg.label}
+        </span>
+        {open ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+      </button>
+      {open && (
+        <div className="ec-prev-ai-body">
+          {result.summary && <p className="ec-prev-ai-summary">{result.summary}</p>}
+          {result.missingRefs?.length > 0 && (
+            <div className="ec-prev-ai-missing">
+              <AlertCircle size={12} />
+              <span>Ausente: {result.missingRefs.join(', ')}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ElementCard({
                        element: el, checklistMap,
                        submitting, comment, setComment, showComment, setShowComment,
@@ -617,6 +653,7 @@ function ElementCard({
             {reviewed && el.humanReview?.status === 'confirmed'  && <span className="reviewed-badge">✓ Confirmado</span>}
             {reviewed && el.humanReview?.status === 'overridden' && <span className="overridden-badge">✎ Revisado</span>}
             {reviewed && el.humanReview?.status === 'skipped'    && <span className="skipped-badge">→ Pulado</span>}
+            {el.reanalyzedAt && <span className="reanalyzed-badge"><RefreshCw size={10} /> Reanalisado</span>}
           </div>
           <div className="ec-nav-row">
             <button className={`ec-nav-btn${!hasPrev ? ' muted' : ''}`} onClick={onPrev} disabled={!hasPrev}>
@@ -652,6 +689,11 @@ function ElementCard({
                   </div>
               )}
             </div>
+        )}
+
+        {/* ── Análise anterior (somente após reanálise) ── */}
+        {el.previousAiResult && (
+          <PreviousAiResult result={el.previousAiResult} />
         )}
 
         {/* ── Trechos localizados ── */}

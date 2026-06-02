@@ -121,12 +121,13 @@ exports.triggerDeepReview = onCall(
       const batch = db.batch()
 
       deepResults.forEach(result => {
-        // Remove campo interno _el se presente
-        const { _el, ...clean } = result
-        batch.set(resultsRef.doc(clean.elementId), {
-          ...clean,
-          updatedAt: Timestamp.now(),
-        }, { merge: true })
+        // Atualiza apenas os campos de resultado da IA — preserva humanReview,
+        // comparison2025, previousAiResult e reanalyzedAt existentes no documento.
+        batch.update(resultsRef.doc(result.elementId), {
+          aiResult:        result.aiResult,
+          effectiveStatus: result.aiResult.status,
+          updatedAt:       Timestamp.now(),
+        })
       })
 
       await batch.commit()
@@ -188,5 +189,12 @@ function computeStats(results) {
   })
   const total    = results.length
   const approved = counts.adequate + counts.adequate_implicit
-  return { ...counts, total, score: total > 0 ? Math.round((approved / total) * 100) : 0 }
+
+  const confirmed  = results.filter(r => {
+    const hr = r.humanReview?.status
+    return hr === 'confirmed' || hr === 'overridden' || hr === 'skipped'
+  }).length
+  const overridden = results.filter(r => r.humanReview?.status === 'overridden').length
+
+  return { ...counts, total, confirmed, overridden, score: total > 0 ? Math.round((approved / total) * 100) : 0 }
 }
