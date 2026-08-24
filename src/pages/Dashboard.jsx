@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { analysesService } from '../services/firebase'
 import { visitasService } from '../services/visitasService'
+import { feiraEdicoesService, feiraInscricoesService } from '../services/feiraService'
 import './Dashboard.css'
 
 export default function Dashboard() {
@@ -13,11 +14,13 @@ export default function Dashboard() {
 
     const [pppStats, setPppStats] = useState(null)
     const [visitasStats, setVisitasStats] = useState(null)
+    const [feiraStats, setFeiraStats] = useState(null)
 
     useEffect(() => {
         if (!user?.uid) return
         carregarPPP()
         carregarVisitas()
+        carregarFeira()
     }, [user, profile])
 
     async function carregarPPP() {
@@ -32,6 +35,23 @@ export default function Dashboard() {
         } catch (err) {
             console.error('[Dashboard] erro ao carregar PPPs:', err)
             setPppStats({ total: 0, pending: 0, review: 0, done: 0 })
+        }
+    }
+
+    async function carregarFeira() {
+        try {
+            const ed = await feiraEdicoesService.getAtiva()
+            if (!ed) { setFeiraStats({ total: 0, em_analise: 0, aprovadas: 0, avaliadas: 0 }); return }
+            const lista = await feiraInscricoesService.listarPorEdicao(ed.id)
+            setFeiraStats({
+                total: lista.length,
+                em_analise: lista.filter(i => ['enviada','em_analise','reenviada','em_reanalise'].includes(i.status)).length,
+                aprovadas: lista.filter(i => i.status === 'aprovada').length,
+                avaliadas: lista.filter(i => ['avaliada','resultado_preliminar','resultado_final','classificada_distrital','nao_classificada'].includes(i.status)).length,
+            })
+        } catch (err) {
+            console.error('[Dashboard] erro ao carregar feira:', err)
+            setFeiraStats({ total: 0, em_analise: 0, aprovadas: 0, avaliadas: 0 })
         }
     }
 
@@ -82,6 +102,21 @@ export default function Dashboard() {
           color="teal"
           icon={<VisitasIcon />}
           secondaryAction={{ label: 'Dashboard', onClick: () => navigate('/visitas/dashboard') }}
+        />
+
+        <ModuleCard
+          title="Feira de Ciências"
+          description="15º CCEP-DF — Etapa Regional"
+          onClick={() => navigate('/feira')}
+          stats={feiraStats ? [
+            { label: 'Total',        value: feiraStats.total   },
+            { label: 'Em análise',   value: feiraStats.em_analise, accent: 'warning' },
+            { label: 'Aprovadas',    value: feiraStats.aprovadas,  accent: 'success' },
+          ] : null}
+          cta="Abrir Feira"
+          color="purple"
+          icon={<FeiraIcon />}
+          secondaryAction={{ label: 'Resultados', onClick: () => navigate('/feira/resultados') }}
         />
       </div>
     </div>
@@ -136,6 +171,16 @@ function PppIcon() {
       <line x1="16" y1="13" x2="8" y2="13"/>
       <line x1="16" y1="17" x2="8" y2="17"/>
       <polyline points="10,9 9,9 8,9"/>
+    </svg>
+  )
+}
+
+function FeiraIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"/>
+      <path d="M8.5 2h7"/>
+      <path d="M7 16.5h10"/>
     </svg>
   )
 }

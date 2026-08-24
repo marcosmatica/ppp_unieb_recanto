@@ -60,8 +60,10 @@
 
 .mc-icon--blue { background: var(--color-background-info); color: var(--color-text-info); }
 .mc-icon--teal { background: #e1f5ee; color: #0f6e56; }
+.mc-icon--purple { background: #f3e8ff; color: #7c3aed; }
 
 html.dark .mc-icon--teal { background: #04342c; color: #5dcaa5; }
+html.dark .mc-icon--purple { background: #2e1065; color: #c084fc; }
 
 .mc-info h2 {
   font-size: 16px;
@@ -144,6 +146,7 @@ html.dark .mc-icon--teal { background: #04342c; color: #5dcaa5; }
 .mc-btn-primary:hover { opacity: 0.88; }
 .mc-btn-primary--blue { background: var(--color-text-info);    color: #fff; }
 .mc-btn-primary--teal { background: #0f6e56; color: #fff; }
+.mc-btn-primary--purple { background: #7c3aed; color: #fff; }
 
 .mc-btn-secondary {
   padding: 9px 14px;

@@ -59,6 +59,42 @@ service cloud.firestore {
       }
     }
 
+    // ─── Feira de Ciências ─────────────────────────────────────────────
+
+    match /feira_edicoes/{docId} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /feira_links_escolas/{token} {
+      allow read: if isAuth();
+      allow write: if isAdmin();
+    }
+
+    match /feira_rascunhos/{docId} {
+      allow read, create, update: if isAuth();
+      allow delete: if false;
+    }
+
+    match /feira_inscricoes/{docId} {
+      allow read: if isWhitelisted()
+        || (isAuth() && request.auth.uid in resource.data.avaliadores);
+      allow create: if false;
+      allow update: if isWhitelisted();
+    }
+
+    match /feira_avaliacoes/{docId} {
+      allow read: if isWhitelisted()
+        || (isAuth() && request.auth.uid == resource.data.avaliador_uid);
+      allow create, update: if isAuth()
+        && request.auth.uid == request.resource.data.avaliador_uid;
+    }
+
+    match /feira_recursos/{docId} {
+      allow create: if isAuth();
+      allow read, update: if isWhitelisted() && role() in ['supervisor','admin'];
+    }
+
     match /audit_log/{logId} {
       allow read:   if isWhitelisted() && role() in ['supervisor','admin'];
       allow create: if isWhitelisted();

@@ -27,6 +27,18 @@ const ReportPage     = lazy(() => import('./pages/ReportPage'))
 const ReportsPage    = lazy(() => import('./pages/ReportsPage'))
 const ParecerPage    = lazy(() => import('./pages/ParecerPage'))
 
+const FeiraListPage       = lazy(() => import('./pages/feira/FeiraListPage'))
+const FeiraConfigPage     = lazy(() => import('./pages/feira/FeiraConfigPage'))
+const FeiraLinksPage      = lazy(() => import('./pages/feira/FeiraLinksPage'))
+const FeiraInscricaoPage  = lazy(() => import('./pages/feira/FeiraInscricaoPage'))
+const FeiraAnalisePage    = lazy(() => import('./pages/feira/FeiraAnalisePage'))
+const FeiraAvaliacaoPage  = lazy(() => import('./pages/feira/FeiraAvaliacaoPage'))
+const FeiraResultadosPage = lazy(() => import('./pages/feira/FeiraResultadosPage'))
+const FeiraRecursosPage   = lazy(() => import('./pages/feira/FeiraRecursosPage'))
+const EscolaPortal        = lazy(() => import('./pages/feira-publica/EscolaPortal'))
+const ProjetoInscricao    = lazy(() => import('./pages/feira-publica/ProjetoInscricao'))
+const ProjetoStatus       = lazy(() => import('./pages/feira-publica/ProjetoStatus'))
+
 function PageLoader() {
   return (
     <div className="page-loader">
@@ -67,6 +79,12 @@ export default function App() {
                 <RequireAuth><ParecerPage /></RequireAuth>
               } />
 
+              {/* Feira de Ciências — rotas públicas */}
+              <Route path="/feira/:tokenEscola" element={<EscolaPortal />} />
+              <Route path="/feira/:tokenEscola/novo" element={<ProjetoInscricao />} />
+              <Route path="/feira/:tokenEscola/projeto/:rascunhoId" element={<ProjetoInscricao />} />
+              <Route path="/feira/:tokenEscola/projeto/:rascunhoId/status" element={<ProjetoStatus />} />
+
               <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
@@ -77,6 +95,15 @@ export default function App() {
                 <Route path="analyses/:analysisId/report" element={<ReportPage />} />
                 <Route path="reports" element={<ReportsPage />} />
                 <Route path="settings" element={<SettingsPage />} />
+
+                <Route path="feira" element={<FeiraListPage />} />
+                <Route path="feira/config" element={<FeiraConfigPage />} />
+                <Route path="feira/links" element={<FeiraLinksPage />} />
+                <Route path="feira/resultados" element={<FeiraResultadosPage />} />
+                <Route path="feira/recursos" element={<FeiraRecursosPage />} />
+                <Route path="feira/inscricao/:id" element={<FeiraInscricaoPage />} />
+                <Route path="feira/inscricao/:id/analise" element={<FeiraAnalisePage />} />
+                <Route path="feira/inscricao/:id/avaliacao" element={<FeiraAvaliacaoPage />} />
 
                 <Route path="visitas" element={<VisitasPage />} />
                 <Route path="visitas/dashboard" element={<DashboardEIPage />} />

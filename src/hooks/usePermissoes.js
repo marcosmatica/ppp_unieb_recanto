@@ -18,5 +18,9 @@ export function usePermissoes() {
     podeEditarParecer:    ['analyst','supervisor','admin'].includes(role),
     podeFinalizarParecer: ['supervisor','admin'].includes(role),
     podeReabrirParecer:   ['supervisor','admin'].includes(role),
+
+    isAvaliadorFeira: profile?.avaliador_feira === true,
+    podeVerFeira:     ['analyst','supervisor','admin'].includes(role),
+    podeGerirFeira:   ['supervisor','admin'].includes(role),
   }
 }
