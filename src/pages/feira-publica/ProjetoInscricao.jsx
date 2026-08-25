@@ -1,12 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { signInAnonymously } from 'firebase/auth'
-import { auth } from '../../services/firebase'
 import { feiraLinksService, feiraRascunhosService, feiraPublicaService, feiraEdicoesService } from '../../services/feiraService'
 import WizardSteps, { STEPS } from '../../components/feira/WizardSteps'
 import CategoriaSelect from '../../components/feira/CategoriaSelect'
-import ChecklistDocumentosFeira from '../../components/feira/ChecklistDocumentosFeira'
+import ChecklistDocumentosFeira, { CONFIRMACOES_PROJETO } from '../../components/feira/ChecklistDocumentosFeira'
 import { MIN_ESTUDANTES, MAX_ESTUDANTES, DEBOUNCE_AUTOSAVE_MS } from '../../constants/feiraConstants'
+
+const EMAIL_DOMINIOS_PERMITIDOS = ['@edu', '@professor', '@professortmp', '@servidor']
+const EMAIL_REGEX_PERMITIDO = /@(edu|professor|professortmp|servidor)(\.|$)/i
+function emailPermitido(email) {
+  if (!email) return false
+  return EMAIL_REGEX_PERMITIDO.test(String(email).trim().toLowerCase())
+}
 
 export default function ProjetoInscricao() {
   const { tokenEscola, rascunhoId } = useParams()
@@ -18,6 +23,7 @@ export default function ProjetoInscricao() {
   const [loading, setLoading] = useState(true)
   const [enviando, setEnviando] = useState(false)
   const [aceiteRegulamento, setAceiteRegulamento] = useState(false)
+  const [statusInscricao, setStatusInscricao] = useState(null)
 
   const [form, setForm] = useState({
     orientador: { nome: '', email: '', telefone: '' },
@@ -27,7 +33,8 @@ export default function ProjetoInscricao() {
     categoria: '',
     resumo: '',
     etapa_local_realizada: false,
-    documentos: { projeto_pesquisa: null, termos_autorizacao: [] },
+    documentos: { projeto_pesquisa: null, termo_autorizacao: null },
+    confirmacoes_projeto: {},
   })
 
   const saveTimer = useRef(null)
@@ -36,7 +43,6 @@ export default function ProjetoInscricao() {
 
   async function iniciar() {
     try {
-      if (!auth.currentUser) await signInAnonymously(auth)
       const linkData = await feiraLinksService.getByToken(tokenEscola)
       if (!linkData) { setLoading(false); return }
       setLink(linkData)
@@ -55,8 +61,10 @@ export default function ProjetoInscricao() {
             resumo: rasc.resumo || '',
             etapa_local_realizada: rasc.etapa_local_realizada || false,
             documentos: rasc.documentos || form.documentos,
+            confirmacoes_projeto: rasc.confirmacoes_projeto || {},
           })
           if (rasc.ultima_secao_editada) setStep(rasc.ultima_secao_editada)
+          setStatusInscricao(rasc.status || null)
         }
       }
     } catch (e) {
@@ -101,8 +109,13 @@ export default function ProjetoInscricao() {
     setEnviando(true)
     try {
       const payload = { ...form, link_escola_token: tokenEscola, edicao_id: link.edicao_id, escola: { inep: link.escola_inep, nome: link.escola_nome, cre: link.escola_cre } }
-      await feiraPublicaService.enviar(docId, payload)
-      navigate(`/feira/${tokenEscola}`)
+      const isReenvio = statusInscricao === 'devolvida'
+      if (isReenvio) {
+        await feiraPublicaService.reenviar(docId, payload)
+      } else {
+        await feiraPublicaService.enviar(docId, payload)
+      }
+      navigate(`/inscricao/${tokenEscola}`)
     } catch (e) {
       console.error(e)
       alert(e.message || 'Erro ao enviar. Tente novamente.')
@@ -115,9 +128,17 @@ export default function ProjetoInscricao() {
   if (!link) return <Shell><p style={{ color: '#dc2626' }}>Link inválido.</p></Shell>
 
   const podeAvancar = (() => {
-    if (step === 'orientador') return form.orientador.nome && form.orientador.email && form.estudantes.length >= MIN_ESTUDANTES && form.estudantes.every(e => e.nome)
+    if (step === 'orientador') {
+      if (!form.orientador.nome || !emailPermitido(form.orientador.email)) return false
+      if (form.orientador2?.nome && !emailPermitido(form.orientador2.email)) return false
+      return form.estudantes.length >= MIN_ESTUDANTES && form.estudantes.every(e => e.nome)
+    }
     if (step === 'projeto') return form.titulo && form.categoria
-    if (step === 'documentos') return form.documentos?.projeto_pesquisa?.url && form.estudantes.every((_, i) => form.documentos?.termos_autorizacao?.[i]?.url)
+    if (step === 'documentos') {
+      const docsOk = form.documentos?.projeto_pesquisa?.url && form.documentos?.termo_autorizacao?.url
+      const confOk = CONFIRMACOES_PROJETO.every(c => form.confirmacoes_projeto?.[c.key])
+      return docsOk && confOk
+    }
     return aceiteRegulamento
   })()
 
@@ -130,13 +151,16 @@ export default function ProjetoInscricao() {
         <p style={{ fontSize: 13, color: '#6b7280', margin: '4px 0 0' }}>{link.escola_nome}</p>
       </div>
 
-      <WizardSteps current={step} onStep={setStep} />
+      <WizardSteps current={step} onStep={setStep} allowAll={!!rascunhoId} />
 
       {step === 'orientador' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <h3 style={{ fontSize: 15, margin: 0 }}>Professor-orientador</h3>
           <Input label="Nome completo" value={form.orientador.nome} onChange={v => updateForm({ orientador: { ...form.orientador, nome: v } })} />
           <Input label="E-mail" type="email" value={form.orientador.email} onChange={v => updateForm({ orientador: { ...form.orientador, email: v } })} />
+          <p style={{ fontSize: 11, color: form.orientador.email && !emailPermitido(form.orientador.email) ? '#dc2626' : '#6b7280', margin: '-8px 0 0' }}>
+            Use apenas e-mail institucional: {EMAIL_DOMINIOS_PERMITIDOS.join(', ')}.
+          </p>
           <Input label="Telefone" value={form.orientador.telefone} onChange={v => updateForm({ orientador: { ...form.orientador, telefone: v } })} />
 
           {form.orientador2 ? (
@@ -144,6 +168,11 @@ export default function ProjetoInscricao() {
               <h3 style={{ fontSize: 15, margin: '8px 0 0' }}>2º Orientador</h3>
               <Input label="Nome" value={form.orientador2.nome} onChange={v => updateForm({ orientador2: { ...form.orientador2, nome: v } })} />
               <Input label="E-mail" value={form.orientador2.email} onChange={v => updateForm({ orientador2: { ...form.orientador2, email: v } })} />
+              {form.orientador2.email && !emailPermitido(form.orientador2.email) && (
+                <p style={{ fontSize: 11, color: '#dc2626', margin: '-8px 0 0' }}>
+                  Use apenas e-mail institucional: {EMAIL_DOMINIOS_PERMITIDOS.join(', ')}.
+                </p>
+              )}
               <button type="button" onClick={() => updateForm({ orientador2: null })} style={{ fontSize: 12, color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', alignSelf: 'flex-start' }}>Remover 2º orientador</button>
             </>
           ) : (
@@ -189,6 +218,9 @@ export default function ProjetoInscricao() {
           projetoId={docId || 'novo'}
           documentos={form.documentos}
           estudantes={form.estudantes}
+          modeloAutorizacao={edicao?.modelo_autorizacao_imagem}
+          confirmacoes={form.confirmacoes_projeto}
+          onConfirmacoesChange={c => updateForm({ confirmacoes_projeto: c }, 'documentos')}
           onChange={docs => updateForm({ documentos: docs }, 'documentos')}
         />
       )}
@@ -202,8 +234,11 @@ export default function ProjetoInscricao() {
           <ReviewSection label="Projeto" items={[form.titulo, `Categoria: ${form.categoria}`, form.etapa_local_realizada ? 'Etapa local realizada' : 'Etapa local não realizada']} />
           <ReviewSection label="Documentos" items={[
             form.documentos?.projeto_pesquisa?.url ? '✓ Projeto de Pesquisa' : '✗ Projeto de Pesquisa',
-            ...form.estudantes.map((e, i) => form.documentos?.termos_autorizacao?.[i]?.url ? `✓ Termo — ${e.nome}` : `✗ Termo — ${e.nome}`)
+            form.documentos?.termo_autorizacao?.url ? '✓ Termo de Autorização de Imagem e Voz' : '✗ Termo de Autorização de Imagem e Voz',
           ]} />
+          <ReviewSection label="Conformidade do Projeto com o Regulamento" items={CONFIRMACOES_PROJETO.map(c =>
+            `${form.confirmacoes_projeto?.[c.key] ? '✓' : '✗'} ${c.label}`
+          )} />
 
           <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginTop: 8 }}>
             <input type="checkbox" checked={aceiteRegulamento} onChange={e => setAceiteRegulamento(e.target.checked)} style={{ marginTop: 2 }} />
@@ -234,7 +269,7 @@ export default function ProjetoInscricao() {
 function Shell({ children }) {
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'DM Sans, sans-serif' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '40px 28px' }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', marginBottom: 24, letterSpacing: '.5px' }}>CCEP-DF · ETAPA REGIONAL</div>
         {children}
       </div>

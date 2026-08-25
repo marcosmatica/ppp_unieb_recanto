@@ -8,16 +8,16 @@ export default function ProjetoCard({ projeto, tokenEscola }) {
 
   const isEnviado = projeto.status !== 'rascunho'
   const rota = isEnviado
-    ? `/feira/${tokenEscola}/projeto/${projeto.id}/status`
-    : `/feira/${tokenEscola}/projeto/${projeto.id}`
+    ? `/inscricao/${tokenEscola}/projeto/${projeto.id}/status`
+    : `/inscricao/${tokenEscola}/projeto/${projeto.id}`
 
   return (
     <div
       onClick={() => navigate(rota)}
       style={{
         border: '1px solid var(--border, #e5e7eb)',
-        borderRadius: 10,
-        padding: '14px 18px',
+        borderRadius: 12,
+        padding: '16px 20px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',

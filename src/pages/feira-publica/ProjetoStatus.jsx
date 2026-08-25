@@ -1,28 +1,32 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { signInAnonymously } from 'firebase/auth'
-import { auth } from '../../services/firebase'
 import { feiraRascunhosService, feiraLinksService } from '../../services/feiraService'
 import StatusBadge from '../../components/feira/StatusBadge'
+import DocPreview from '../../components/feira/DocPreview'
 import { CATEGORIAS } from '../../constants/feiraConstants'
+import { collection, query, where, limit, getDocs } from 'firebase/firestore'
+import { db } from '../../services/firebase'
 
 export default function ProjetoStatus() {
   const { tokenEscola, rascunhoId } = useParams()
   const navigate = useNavigate()
   const [projeto, setProjeto] = useState(null)
+  const [inscricao, setInscricao] = useState(null)
   const [link, setLink] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     ;(async () => {
       try {
-        if (!auth.currentUser) await signInAnonymously(auth)
         const [l, p] = await Promise.all([
           feiraLinksService.getByToken(tokenEscola),
           feiraRascunhosService.getById(rascunhoId),
         ])
         setLink(l)
         setProjeto(p)
+        const q = query(collection(db, 'feira_inscricoes'), where('rascunho_id', '==', rascunhoId), limit(1))
+        const snap = await getDocs(q)
+        if (!snap.empty) setInscricao({ id: snap.docs[0].id, ...snap.docs[0].data() })
       } catch (e) {
         console.error(e)
       } finally {
@@ -39,7 +43,7 @@ export default function ProjetoStatus() {
 
   return (
     <Shell>
-      <button onClick={() => navigate(`/feira/${tokenEscola}`)} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>← Voltar ao portal</button>
+      <button onClick={() => navigate(`/inscricao/${tokenEscola}`)} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: 13, marginBottom: 16, padding: 0 }}>← Voltar ao portal</button>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
@@ -63,19 +67,48 @@ export default function ProjetoStatus() {
       </Section>
 
       <Section label="Documentos">
-        <p>{projeto.documentos?.projeto_pesquisa?.url ? '✓ Projeto de Pesquisa enviado' : '✗ Projeto de Pesquisa pendente'}</p>
-        {projeto.estudantes?.map((e, i) => (
-          <p key={i}>{projeto.documentos?.termos_autorizacao?.[i]?.url ? '✓' : '✗'} Termo — {e.nome}</p>
+        {projeto.documentos?.projeto_pesquisa?.url ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+            <span>✓ Projeto de Pesquisa enviado</span>
+            <DocPreview url={projeto.documentos.projeto_pesquisa.url} nome={projeto.documentos.projeto_pesquisa.nome} />
+          </div>
+        ) : <p>✗ Projeto de Pesquisa pendente</p>}
+        {(() => {
+          const t = projeto.documentos?.termo_autorizacao
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+              <span>{t?.url ? '✓' : '✗'} Termo de Autorização de Imagem e Voz</span>
+              {t?.url && <DocPreview url={t.url} nome={t.nome} />}
+            </div>
+          )
+        })()}
+        {projeto.documentos?.termos_autorizacao?.map((t, i) => (
+          t?.url && (
+            <div key={`legado-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+              <span>✓ Termo (legado) — {t.estudante_nome || `Estudante ${i + 1}`}</span>
+              <DocPreview url={t.url} nome={t.nome} />
+            </div>
+          )
         ))}
       </Section>
 
       {isDevolvido && (
-        <div style={{ padding: '14px 18px', borderRadius: 10, background: '#fff7ed', border: '1px solid #fed7aa', marginTop: 16 }}>
+        <div style={{ padding: '16px 20px', borderRadius: 12, background: '#fff7ed', border: '1px solid #fed7aa', marginTop: 20 }}>
           <strong style={{ fontSize: 14, color: '#c2410c' }}>Inscrição devolvida para correções</strong>
-          <p style={{ fontSize: 13, marginTop: 6 }}>Acesse o formulário para corrigir os itens apontados pela comissão.</p>
+          {(() => {
+            const hist = inscricao?.devolucoes_hist || []
+            const ultima = hist[hist.length - 1]
+            if (!ultima?.mensagem) return <p style={{ fontSize: 13, marginTop: 8 }}>Acesse o formulário para corrigir os itens apontados pela comissão.</p>
+            return (
+              <div style={{ marginTop: 10, padding: '10px 14px', background: '#fff', borderRadius: 8, border: '1px solid #fed7aa' }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#9a3412', marginBottom: 4 }}>Mensagem da comissão{ultima.por_nome ? ` · ${ultima.por_nome}` : ''}</div>
+                <div style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{ultima.mensagem}</div>
+              </div>
+            )
+          })()}
           <button
-            onClick={() => navigate(`/feira/${tokenEscola}/projeto/${rascunhoId}`)}
-            style={{ marginTop: 8, padding: '8px 18px', borderRadius: 8, border: 'none', background: '#ea580c', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+            onClick={() => navigate(`/inscricao/${tokenEscola}/projeto/${rascunhoId}`)}
+            style={{ marginTop: 12, padding: '10px 22px', borderRadius: 8, border: 'none', background: '#ea580c', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
           >
             Corrigir e reenviar
           </button>
@@ -88,7 +121,7 @@ export default function ProjetoStatus() {
 function Shell({ children }) {
   return (
     <div style={{ minHeight: '100vh', background: '#f9fafb', fontFamily: 'DM Sans, sans-serif' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '40px 28px' }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: '#2563eb', marginBottom: 24, letterSpacing: '.5px' }}>CCEP-DF · ETAPA REGIONAL</div>
         {children}
       </div>
@@ -98,7 +131,7 @@ function Shell({ children }) {
 
 function Section({ label, children }) {
   return (
-    <div style={{ marginBottom: 16, padding: '12px 16px', borderRadius: 8, border: '1px solid #e5e7eb' }}>
+    <div style={{ marginBottom: 16, padding: '14px 18px', borderRadius: 10, border: '1px solid #e5e7eb' }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', marginBottom: 6 }}>{label}</div>
       <div style={{ fontSize: 13 }}>{children}</div>
     </div>

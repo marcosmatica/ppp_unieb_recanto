@@ -16,7 +16,7 @@ const { getDocumentViewerUrl } = require('./report/getDocumentViewerUrl')
 const { buildParecer } = require('./parecer/buildParecer')
 const { finalizarParecer } = require('./parecer/finalizarParecer')
 const { exportParecerPdf } = require('./parecer/exportParecerPdf')
-const { feiraGerarLinks, feiraEnviar, feiraReenviar, feiraCalcularResultados, feiraOnAvaliacaoWrite, feiraRecalcularRecurso, feiraPublicarResultadoFinal, feiraGerarCertificados, feiraGerarRelatorioSEI } = require('./feira')
+const { feiraGerarLinks, feiraEnviar, feiraReenviar, feiraCalcularResultados, feiraOnAvaliacaoWrite, feiraOnInscricaoStatusChange, feiraBackfillRascunhoStatus, feiraRecalcularRecurso, feiraPublicarResultadoFinal, feiraGerarCertificados, feiraGerarRelatorioSEI, feiraLookupEscola, feiraEnviarLinkEmail } = require('./feira')
 
 module.exports = {
   onPPPUploaded,
@@ -36,8 +36,11 @@ module.exports = {
   feiraReenviar,
   feiraCalcularResultados,
   feiraOnAvaliacaoWrite,
+  feiraOnInscricaoStatusChange, feiraBackfillRascunhoStatus,
   feiraRecalcularRecurso,
   feiraPublicarResultadoFinal,
   feiraGerarCertificados,
   feiraGerarRelatorioSEI,
+  feiraLookupEscola,
+  feiraEnviarLinkEmail,
 }

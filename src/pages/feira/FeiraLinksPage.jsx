@@ -40,8 +40,13 @@ export default function FeiraLinksPage() {
   }
 
   function copiarLink(token) {
-    navigator.clipboard.writeText(`${window.location.origin}/feira/${token}`)
+    navigator.clipboard.writeText(`${window.location.origin}/inscricao/${token}`)
     toast.success('Link copiado!')
+  }
+
+  function copiarLinkUnificado() {
+    navigator.clipboard.writeText(`${window.location.origin}/inscricao`)
+    toast.success('Link unificado copiado!')
   }
 
   if (loading) return <div style={{ padding: 32 }}>Carregando...</div>
@@ -53,6 +58,16 @@ export default function FeiraLinksPage() {
         <h1 style={{ fontSize: 20, margin: 0 }}>Links por Escola</h1>
         <button onClick={gerarLinks} disabled={gerando} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
           {gerando ? 'Gerando...' : 'Gerar links para todas as escolas'}
+        </button>
+      </div>
+
+      <div style={{ marginBottom: 20, background: '#f0f4ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#1e3a8a', marginBottom: 2 }}>Link unificado de inscrições</div>
+          <code style={{ fontSize: 12, color: '#374151', wordBreak: 'break-all' }}>{`${window.location.origin}/inscricao`}</code>
+        </div>
+        <button onClick={copiarLinkUnificado} style={{ padding: '6px 14px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          Copiar link unificado
         </button>
       </div>
 

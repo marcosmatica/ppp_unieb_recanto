@@ -1,9 +1,10 @@
 // functions/src/feira.js
 
-const { onCall, HttpsError } = require("firebase-functions/v2/https")
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https")
 const { onDocumentWritten } = require("firebase-functions/v2/firestore")
 const { getFirestore, FieldValue } = require("firebase-admin/firestore")
 const crypto = require("crypto")
+const nodemailer = require("nodemailer")
 
 const db = getFirestore()
 
@@ -66,8 +67,6 @@ const feiraGerarLinks = onCall(
 const feiraEnviar = onCall(
   { region: "southamerica-east1" },
   async (request) => {
-    if (!request.auth) throw new HttpsError("unauthenticated", "Não autenticado")
-
     const { rascunhoId, payload } = request.data
     if (!rascunhoId || !payload) throw new HttpsError("invalid-argument", "Dados incompletos")
 
@@ -76,6 +75,28 @@ const feiraEnviar = onCall(
     const edicao = edicaoSnap.data()
     if (!edicao.ativo || !edicao.inscricoes_abertas) {
       throw new HttpsError("failed-precondition", "Inscrições não estão abertas")
+    }
+    if (edicao.data_encerramento) {
+      const hoje = new Date().toISOString().slice(0, 10)
+      if (hoje > edicao.data_encerramento) {
+        throw new HttpsError("failed-precondition", "Prazo de envio encerrado")
+      }
+    }
+    if (edicao.data_inicio) {
+      const hoje = new Date().toISOString().slice(0, 10)
+      if (hoje < edicao.data_inicio) {
+        throw new HttpsError("failed-precondition", "Inscrições ainda não iniciaram")
+      }
+    }
+    if (edicao.max_projetos_por_escola && payload.link_escola_token) {
+      const linkSnap = await db.collection("feira_links_escolas").doc(payload.link_escola_token).get()
+      if (linkSnap.exists) {
+        const atual = linkSnap.data().projetos_count || 0
+        const limite = linkSnap.data().max_projetos ?? edicao.max_projetos_por_escola
+        if (atual >= limite) {
+          throw new HttpsError("failed-precondition", `Limite de ${limite} projeto(s) por escola atingido`)
+        }
+      }
     }
 
     if (!payload.titulo || !payload.categoria || !payload.orientador?.nome) {
@@ -130,8 +151,6 @@ const feiraEnviar = onCall(
 const feiraReenviar = onCall(
   { region: "southamerica-east1" },
   async (request) => {
-    if (!request.auth) throw new HttpsError("unauthenticated", "Não autenticado")
-
     const { rascunhoId, payload } = request.data
     if (!rascunhoId || !payload) throw new HttpsError("invalid-argument", "Dados incompletos")
 
@@ -147,6 +166,11 @@ const feiraReenviar = onCall(
 
     if (insc.status !== "devolvida") {
       throw new HttpsError("failed-precondition", "Inscrição não está devolvida")
+    }
+
+    const edicaoRSnap = await db.collection("feira_edicoes").doc(insc.edicao_id).get()
+    if (edicaoRSnap.exists && edicaoRSnap.data().permitir_reenvio === false) {
+      throw new HttpsError("failed-precondition", "Reenvio de projetos está desabilitado")
     }
 
     const novoEnvio = (insc.envio_num || 1) + 1
@@ -255,6 +279,141 @@ const feiraCalcularResultados = onCall(
     await batch.commit()
 
     return { ok: true, ranking: ranking.map((r, i) => ({ posicao: i + 1, ...r })) }
+  }
+)
+
+// ─── feiraBackfillRascunhoStatus ─────────────────────────────────────────────
+// Sincroniza feira_rascunhos.status a partir do status atual em feira_inscricoes.
+
+const feiraBackfillRascunhoStatus = onCall(
+  { region: "southamerica-east1" },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Não autenticado")
+    const userDoc = await db.collection("users").doc(request.auth.uid).get()
+    if (!userDoc.exists || userDoc.data().role !== "admin") {
+      throw new HttpsError("permission-denied", "Apenas admin")
+    }
+
+    const inscSnap = await db.collection("feira_inscricoes").get()
+    let atualizados = 0
+    let ignorados = 0
+    const detalhes = []
+
+    for (const doc of inscSnap.docs) {
+      const insc = doc.data()
+      if (!insc.rascunho_id) { ignorados++; continue }
+      const rascRef = db.collection("feira_rascunhos").doc(insc.rascunho_id)
+      const rascSnap = await rascRef.get()
+      if (!rascSnap.exists) { ignorados++; continue }
+      const rascStatus = rascSnap.data().status
+      if (rascStatus === insc.status) { ignorados++; continue }
+
+      const trancado = insc.status === "aprovada" || insc.status === "indeferida"
+      const patch = {
+        status: insc.status,
+        trancado,
+        atualizado_em: FieldValue.serverTimestamp(),
+      }
+      if (insc.status === "devolvida") {
+        patch.campos_liberados = rascSnap.data().campos_liberados || []
+      }
+      await rascRef.update(patch)
+      atualizados++
+      detalhes.push({ rascunhoId: insc.rascunho_id, de: rascStatus, para: insc.status })
+    }
+
+    return { ok: true, atualizados, ignorados, total: inscSnap.size, detalhes }
+  }
+)
+
+// ─── feiraOnInscricaoStatusChange ────────────────────────────────────────────
+// Envia email para a escola quando avaliador aprovar / devolver / indeferir
+
+const STATUS_EMAIL_LABELS = {
+  aprovada:   { titulo: "Inscrição aprovada",  cor: "#16a34a" },
+  devolvida:  { titulo: "Inscrição devolvida para correções", cor: "#ea580c" },
+  indeferida: { titulo: "Inscrição indeferida", cor: "#dc2626" },
+}
+
+const feiraOnInscricaoStatusChange = onDocumentWritten(
+  { document: "feira_inscricoes/{inscId}", region: "southamerica-east1", secrets: ["SMTP_USER", "SMTP_PASS"] },
+  async (event) => {
+    const before = event.data?.before?.data()
+    const after = event.data?.after?.data()
+    if (!after) return
+    const statusAntigo = before?.status
+    const statusNovo = after.status
+    if (statusAntigo === statusNovo) return
+    if (!STATUS_EMAIL_LABELS[statusNovo]) return
+
+    const smtpUser = process.env.SMTP_USER
+    const smtpPass = process.env.SMTP_PASS
+    if (!smtpUser || !smtpPass) {
+      console.warn("SMTP não configurado — email de análise não enviado")
+      return
+    }
+
+    const destinatarios = new Set()
+    if (after.orientador?.email) destinatarios.add(after.orientador.email)
+    if (after.orientador2?.email) destinatarios.add(after.orientador2.email)
+    if (after.link_escola_token) {
+      const linkSnap = await db.collection("feira_links_escolas").doc(after.link_escola_token).get()
+      if (linkSnap.exists && linkSnap.data().ultimo_email_enviado) {
+        destinatarios.add(linkSnap.data().ultimo_email_enviado)
+      }
+    }
+    if (destinatarios.size === 0) return
+
+    const info = STATUS_EMAIL_LABELS[statusNovo]
+    const baseUrl = process.env.APP_BASE_URL || "https://unieb-recanto.web.app"
+    const link = after.link_escola_token && after.rascunho_id
+      ? `${baseUrl}/inscricao/${after.link_escola_token}/projeto/${after.rascunho_id}/status`
+      : baseUrl
+
+    let msgDevolucao = ""
+    if (statusNovo === "devolvida") {
+      const hist = after.devolucoes_hist || []
+      const ultima = hist[hist.length - 1]
+      if (ultima?.mensagem) {
+        msgDevolucao = `
+          <div style="margin:16px 0;padding:12px 16px;background:#fff7ed;border-left:3px solid #ea580c;border-radius:6px;">
+            <strong style="color:#c2410c;">Mensagem da comissão:</strong>
+            <div style="margin-top:6px;white-space:pre-wrap;">${String(ultima.mensagem).replace(/</g, "&lt;")}</div>
+          </div>`
+      }
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: parseInt(process.env.SMTP_PORT || "587", 10),
+      secure: (parseInt(process.env.SMTP_PORT || "587", 10)) === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    })
+
+    try {
+      await transporter.sendMail({
+        from: `"CCEP-DF Etapa Regional" <${smtpUser}>`,
+        to: Array.from(destinatarios).join(", "),
+        subject: `${info.titulo} — ${after.titulo || "Projeto"}`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+            <h2 style="color:${info.cor};margin-bottom:8px;">${info.titulo}</h2>
+            <p>Olá!</p>
+            <p>O projeto <strong>${after.titulo || ""}</strong> da escola <strong>${after.escola?.nome || ""}</strong> teve sua análise atualizada.</p>
+            ${msgDevolucao}
+            <div style="margin:24px 0;text-align:center;">
+              <a href="${link}" style="display:inline-block;padding:12px 28px;background:${info.cor};color:#fff;text-decoration:none;border-radius:8px;font-weight:600;">
+                ${statusNovo === "devolvida" ? "Corrigir e reenviar" : "Ver detalhes"}
+              </a>
+            </div>
+            <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+            <p style="font-size:11px;color:#9ca3af;">Email automático do sistema UNIEB Recanto.</p>
+          </div>
+        `,
+      })
+    } catch (e) {
+      console.error("Falha ao enviar email de análise:", e)
+    }
   }
 )
 
@@ -711,14 +870,137 @@ function gerarHtmlCertificado({ nomeParticipante, tipoParticipante, titulo, cate
 </body></html>`
 }
 
+// ─── feiraLookupEscola (público, sem auth) ─────────────────────────────────
+// Busca escola pelo código INEP e retorna info básica + se tem link ativo
+
+const feiraLookupEscola = onRequest(
+  { region: "southamerica-east1", cors: true },
+  async (req, res) => {
+    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" })
+
+    const { inep } = req.body
+    if (!inep || typeof inep !== "string" || inep.trim().length < 4) {
+      return res.status(400).json({ error: "Código INEP inválido" })
+    }
+
+    const inepClean = inep.trim()
+
+    const linkSnap = await db.collection("feira_links_escolas")
+      .where("escola_inep", "==", inepClean)
+      .limit(1)
+      .get()
+
+    if (linkSnap.empty) {
+      return res.status(404).json({ error: "Nenhum link encontrado para este código INEP. Verifique o código e tente novamente." })
+    }
+
+    const linkDoc = linkSnap.docs[0]
+    const link = linkDoc.data()
+
+    const edicaoSnap = await db.collection("feira_edicoes").doc(link.edicao_id).get()
+    const edicao = edicaoSnap.exists ? edicaoSnap.data() : null
+
+    res.json({
+      ok: true,
+      escola_nome: link.escola_nome,
+      escola_inep: link.escola_inep,
+      escola_cre: link.escola_cre,
+      edicao_ano: edicao?.ano || null,
+      edicao_tema: edicao?.tema || null,
+      inscricoes_abertas: edicao?.inscricoes_abertas || false,
+    })
+  }
+)
+
+// ─── feiraEnviarLinkEmail (público, sem auth) ───────────────────────────────
+// Envia o link individual da escola por email
+
+const feiraEnviarLinkEmail = onRequest(
+  { region: "southamerica-east1", cors: true, secrets: ["SMTP_USER", "SMTP_PASS"] },
+  async (req, res) => {
+    if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" })
+
+    const { inep, email } = req.body
+    if (!inep || !email) return res.status(400).json({ error: "INEP e email são obrigatórios" })
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) return res.status(400).json({ error: "Email inválido" })
+
+    const linkSnap = await db.collection("feira_links_escolas")
+      .where("escola_inep", "==", inep.trim())
+      .limit(1)
+      .get()
+
+    if (linkSnap.empty) {
+      return res.status(404).json({ error: "Nenhum link encontrado para este INEP" })
+    }
+
+    const linkDoc = linkSnap.docs[0]
+    const link = linkDoc.data()
+    const token = linkDoc.id
+
+    const baseUrl = process.env.APP_BASE_URL || "https://unieb-recanto.web.app"
+    const portalUrl = `${baseUrl}/inscricao/${token}`
+
+    const smtpUser = process.env.SMTP_USER
+    const smtpPass = process.env.SMTP_PASS
+    const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com"
+    const smtpPort = parseInt(process.env.SMTP_PORT || "587", 10)
+
+    if (!smtpUser || !smtpPass) {
+      return res.status(500).json({ error: "Serviço de email não configurado" })
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    })
+
+    await transporter.sendMail({
+      from: `"CCEP-DF Etapa Regional" <${smtpUser}>`,
+      to: email,
+      subject: `Link de Inscrição — ${link.escola_nome} — CCEP-DF`,
+      html: `
+        <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+          <h2 style="color:#1e3a5f;margin-bottom:8px;">CCEP-DF · Etapa Regional</h2>
+          <p>Olá!</p>
+          <p>Segue o link de inscrição para a <strong>${link.escola_nome}</strong> (INEP ${link.escola_inep}):</p>
+          <div style="margin:24px 0;text-align:center;">
+            <a href="${portalUrl}" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;font-size:16px;">
+              Acessar Portal da Escola
+            </a>
+          </div>
+          <p style="font-size:13px;color:#6b7280;">Ou copie e cole este link no navegador:<br>
+          <a href="${portalUrl}" style="color:#2563eb;">${portalUrl}</a></p>
+          <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;">
+          <p style="font-size:11px;color:#9ca3af;">Este email foi enviado pelo sistema UNIEB Recanto. Caso não tenha solicitado, ignore esta mensagem.</p>
+        </div>
+      `,
+    })
+
+    await db.collection("feira_links_escolas").doc(token).update({
+      ultimo_email_enviado: email,
+      ultimo_email_em: FieldValue.serverTimestamp(),
+    })
+
+    res.json({ ok: true, message: "Link enviado com sucesso!" })
+  }
+)
+
 module.exports = {
   feiraGerarLinks,
   feiraEnviar,
   feiraReenviar,
   feiraCalcularResultados,
   feiraOnAvaliacaoWrite,
+  feiraOnInscricaoStatusChange,
+  feiraBackfillRascunhoStatus,
   feiraRecalcularRecurso,
   feiraPublicarResultadoFinal,
   feiraGerarCertificados,
   feiraGerarRelatorioSEI,
+  feiraLookupEscola,
+  feiraEnviarLinkEmail,
 }

@@ -62,17 +62,17 @@ service cloud.firestore {
     // ─── Feira de Ciências ─────────────────────────────────────────────
 
     match /feira_edicoes/{docId} {
-      allow read: if isAuth();
-      allow write: if isAdmin();
+      allow read: if true;
+      allow write: if isWhitelisted() && role() in ['admin','analyst'];
     }
 
     match /feira_links_escolas/{token} {
-      allow read: if isAuth();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
     match /feira_rascunhos/{docId} {
-      allow read, create, update: if isAuth();
+      allow read, create, update: if true;
       allow delete: if false;
     }
 

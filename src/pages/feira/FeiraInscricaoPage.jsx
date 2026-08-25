@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { feiraInscricoesService, feiraAvaliadorService, feiraAvaliacoesService } from '../../services/feiraService'
 import StatusBadge from '../../components/feira/StatusBadge'
+import DocPreview from '../../components/feira/DocPreview'
 import { CATEGORIAS } from '../../constants/feiraConstants'
 import toast from 'react-hot-toast'
 
@@ -17,16 +18,26 @@ export default function FeiraInscricaoPage() {
 
   useEffect(() => {
     async function carregar() {
-      const i = await feiraInscricoesService.getById(id)
-      setInscricao(i)
-      if (i) {
-        setSelecionados(i.avaliadores || [])
-        const avs = await feiraAvaliadorService.listarAvaliadores()
-        setAvaliadores(avs)
-        const avalList = await feiraAvaliacoesService.listarPorInscricao(id)
-        setAvaliacoes(avalList)
+      try {
+        const i = await feiraInscricoesService.getById(id)
+        setInscricao(i)
+        if (i) {
+          setSelecionados(i.avaliadores || [])
+          try {
+            const avs = await feiraAvaliadorService.listarAvaliadores()
+            setAvaliadores(avs)
+          } catch (e) { console.error('Falha ao listar avaliadores:', e) }
+          try {
+            const avalList = await feiraAvaliacoesService.listarPorInscricao(id)
+            setAvaliacoes(avalList)
+          } catch (e) { console.error('Falha ao listar avaliações:', e) }
+        }
+      } catch (e) {
+        console.error('Falha ao carregar inscrição:', e)
+        toast.error('Erro ao carregar inscrição')
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     carregar()
   }, [id])
@@ -80,10 +91,24 @@ export default function FeiraInscricaoPage() {
 
       <Section label="Documentos">
         {inscricao.documentos?.projeto_pesquisa?.url && (
-          <p><a href={inscricao.documentos.projeto_pesquisa.url} target="_blank" rel="noreferrer">Projeto de Pesquisa</a></p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+            <span>Projeto de Pesquisa</span>
+            <DocPreview url={inscricao.documentos.projeto_pesquisa.url} nome={inscricao.documentos.projeto_pesquisa.nome} />
+          </div>
+        )}
+        {inscricao.documentos?.termo_autorizacao?.url && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+            <span>Termo de Autorização de Imagem e Voz</span>
+            <DocPreview url={inscricao.documentos.termo_autorizacao.url} nome={inscricao.documentos.termo_autorizacao.nome} />
+          </div>
         )}
         {inscricao.documentos?.termos_autorizacao?.map((t, i) => (
-          t?.url && <p key={i}><a href={t.url} target="_blank" rel="noreferrer">Termo — {t.estudante_nome || `Estudante ${i + 1}`}</a></p>
+          t?.url && (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+              <span>Termo (legado) — {t.estudante_nome || `Estudante ${i + 1}`}</span>
+              <DocPreview url={t.url} nome={t.nome} />
+            </div>
+          )
         ))}
       </Section>
 
@@ -92,9 +117,13 @@ export default function FeiraInscricaoPage() {
         <p>Envio nº {inscricao.envio_num || 1} · Devoluções: {inscricao.devolucoes_num || 0}</p>
       </Section>
 
-      {['enviada', 'reenviada'].includes(inscricao.status) && (
+      {['enviada', 'reenviada', 'em_analise', 'em_reanalise', 'devolvida'].includes(inscricao.status) && (
         <button onClick={() => navigate(`/feira/inscricao/${id}/analise`)} style={{ marginTop: 16, padding: '10px 20px', borderRadius: 8, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>
-          Iniciar análise
+          {['reenviada', 'em_reanalise'].includes(inscricao.status)
+            ? 'Reanalisar (nova versão enviada)'
+            : inscricao.status === 'devolvida'
+              ? 'Revisar análise devolvida'
+              : (inscricao.analise_checklist ? 'Continuar análise' : 'Iniciar análise')}
         </button>
       )}
 

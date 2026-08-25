@@ -35,6 +35,7 @@ const FeiraAnalisePage    = lazy(() => import('./pages/feira/FeiraAnalisePage'))
 const FeiraAvaliacaoPage  = lazy(() => import('./pages/feira/FeiraAvaliacaoPage'))
 const FeiraResultadosPage = lazy(() => import('./pages/feira/FeiraResultadosPage'))
 const FeiraRecursosPage   = lazy(() => import('./pages/feira/FeiraRecursosPage'))
+const FeiraPortal          = lazy(() => import('./pages/feira-publica/FeiraPortal'))
 const EscolaPortal        = lazy(() => import('./pages/feira-publica/EscolaPortal'))
 const ProjetoInscricao    = lazy(() => import('./pages/feira-publica/ProjetoInscricao'))
 const ProjetoStatus       = lazy(() => import('./pages/feira-publica/ProjetoStatus'))
@@ -80,10 +81,11 @@ export default function App() {
               } />
 
               {/* Feira de Ciências — rotas públicas */}
-              <Route path="/feira/:tokenEscola" element={<EscolaPortal />} />
-              <Route path="/feira/:tokenEscola/novo" element={<ProjetoInscricao />} />
-              <Route path="/feira/:tokenEscola/projeto/:rascunhoId" element={<ProjetoInscricao />} />
-              <Route path="/feira/:tokenEscola/projeto/:rascunhoId/status" element={<ProjetoStatus />} />
+              <Route path="/inscricao" element={<FeiraPortal />} />
+              <Route path="/inscricao/:tokenEscola" element={<EscolaPortal />} />
+              <Route path="/inscricao/:tokenEscola/novo" element={<ProjetoInscricao />} />
+              <Route path="/inscricao/:tokenEscola/projeto/:rascunhoId" element={<ProjetoInscricao />} />
+              <Route path="/inscricao/:tokenEscola/projeto/:rascunhoId/status" element={<ProjetoStatus />} />
 
               <Route path="/" element={<RequireAuth><AppLayout /></RequireAuth>}>
                 <Route index element={<Navigate to="/dashboard" replace />} />

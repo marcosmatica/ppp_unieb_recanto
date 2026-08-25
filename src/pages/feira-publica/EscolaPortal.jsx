@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { signInAnonymously } from 'firebase/auth'
-import { auth } from '../../services/firebase'
 import { feiraLinksService, feiraRascunhosService, feiraEdicoesService } from '../../services/feiraService'
 import ProjetoCard from '../../components/feira/ProjetoCard'
 
@@ -20,8 +18,6 @@ export default function EscolaPortal() {
 
   async function iniciar() {
     try {
-      if (!auth.currentUser) await signInAnonymously(auth)
-
       const linkData = await feiraLinksService.getByToken(tokenEscola)
       if (!linkData) { setErro('Link inválido ou expirado.'); setLoading(false); return }
       setLink(linkData)
@@ -54,7 +50,7 @@ export default function EscolaPortal() {
       </div>
 
       {edicao && (
-        <div style={{ padding: '12px 16px', borderRadius: 10, background: '#f0f9ff', marginBottom: 24, fontSize: 13 }}>
+        <div style={{ padding: '16px 20px', borderRadius: 12, background: '#f0f9ff', marginBottom: 24, fontSize: 13 }}>
           <strong>{edicao.tema}</strong>
           <div style={{ marginTop: 4 }}>
             {inscricoesAbertas
@@ -70,7 +66,7 @@ export default function EscolaPortal() {
         <h2 style={{ fontSize: 16, margin: 0 }}>Projetos inscritos ({projetos.length})</h2>
         {inscricoesAbertas && (
           <button
-            onClick={() => navigate(`/feira/${tokenEscola}/novo`)}
+            onClick={() => navigate(`/inscricao/${tokenEscola}/novo`)}
             style={{
               padding: '8px 18px', borderRadius: 8, border: 'none',
               background: '#2563eb', color: '#fff', fontSize: 13,
@@ -100,7 +96,7 @@ function PageShell({ children }) {
       background: 'var(--bg-page, #f9fafb)',
       fontFamily: 'DM Sans, sans-serif',
     }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 20px' }}>
+      <div style={{ maxWidth: 760, margin: '0 auto', padding: '40px 28px' }}>
         <div style={{
           fontSize: 12, fontWeight: 600, color: '#2563eb',
           marginBottom: 24, letterSpacing: '.5px',
