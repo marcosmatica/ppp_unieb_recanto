@@ -19,26 +19,42 @@ import DashboardEIPage from './pages/DashboardEIPage'
 import EscolaDetailPage from './pages/EscolaDetailPage'
 import { useServiceWorker } from './hooks/useServiceWorker'
 
-const SchoolsPage    = lazy(() => import('./pages/SchoolsPage'))
-const AnalysisList   = lazy(() => import('./pages/AnalysisList'))
-const AnalysisNew    = lazy(() => import('./pages/AnalysisNew'))
-const AnalysisReview = lazy(() => import('./pages/AnalysisReview'))
-const ReportPage     = lazy(() => import('./pages/ReportPage'))
-const ReportsPage    = lazy(() => import('./pages/ReportsPage'))
-const ParecerPage    = lazy(() => import('./pages/ParecerPage'))
+// Recarrega a página quando um chunk hasheado deixa de existir (deploy novo).
+// Só recarrega 1x por sessão para não entrar em loop.
+function lazyRetry(loader) {
+  return loader().catch(err => {
+    const isChunkErr =
+      err?.name === 'ChunkLoadError' ||
+      /Failed to fetch dynamically imported module|Loading chunk|Importing a module script failed/i.test(String(err?.message || ''))
+    if (isChunkErr && !sessionStorage.getItem('__chunk_reload__')) {
+      sessionStorage.setItem('__chunk_reload__', '1')
+      window.location.reload()
+      return new Promise(() => {}) // trava o render até o reload
+    }
+    throw err
+  })
+}
 
-const FeiraListPage       = lazy(() => import('./pages/feira/FeiraListPage'))
-const FeiraConfigPage     = lazy(() => import('./pages/feira/FeiraConfigPage'))
-const FeiraLinksPage      = lazy(() => import('./pages/feira/FeiraLinksPage'))
-const FeiraInscricaoPage  = lazy(() => import('./pages/feira/FeiraInscricaoPage'))
-const FeiraAnalisePage    = lazy(() => import('./pages/feira/FeiraAnalisePage'))
-const FeiraAvaliacaoPage  = lazy(() => import('./pages/feira/FeiraAvaliacaoPage'))
-const FeiraResultadosPage = lazy(() => import('./pages/feira/FeiraResultadosPage'))
-const FeiraRecursosPage   = lazy(() => import('./pages/feira/FeiraRecursosPage'))
-const FeiraPortal          = lazy(() => import('./pages/feira-publica/FeiraPortal'))
-const EscolaPortal        = lazy(() => import('./pages/feira-publica/EscolaPortal'))
-const ProjetoInscricao    = lazy(() => import('./pages/feira-publica/ProjetoInscricao'))
-const ProjetoStatus       = lazy(() => import('./pages/feira-publica/ProjetoStatus'))
+const SchoolsPage    = lazy(() => lazyRetry(() => import('./pages/SchoolsPage')))
+const AnalysisList   = lazy(() => lazyRetry(() => import('./pages/AnalysisList')))
+const AnalysisNew    = lazy(() => lazyRetry(() => import('./pages/AnalysisNew')))
+const AnalysisReview = lazy(() => lazyRetry(() => import('./pages/AnalysisReview')))
+const ReportPage     = lazy(() => lazyRetry(() => import('./pages/ReportPage')))
+const ReportsPage    = lazy(() => lazyRetry(() => import('./pages/ReportsPage')))
+const ParecerPage    = lazy(() => lazyRetry(() => import('./pages/ParecerPage')))
+
+const FeiraListPage       = lazy(() => lazyRetry(() => import('./pages/feira/FeiraListPage')))
+const FeiraConfigPage     = lazy(() => lazyRetry(() => import('./pages/feira/FeiraConfigPage')))
+const FeiraLinksPage      = lazy(() => lazyRetry(() => import('./pages/feira/FeiraLinksPage')))
+const FeiraInscricaoPage  = lazy(() => lazyRetry(() => import('./pages/feira/FeiraInscricaoPage')))
+const FeiraAnalisePage    = lazy(() => lazyRetry(() => import('./pages/feira/FeiraAnalisePage')))
+const FeiraAvaliacaoPage  = lazy(() => lazyRetry(() => import('./pages/feira/FeiraAvaliacaoPage')))
+const FeiraResultadosPage = lazy(() => lazyRetry(() => import('./pages/feira/FeiraResultadosPage')))
+const FeiraRecursosPage   = lazy(() => lazyRetry(() => import('./pages/feira/FeiraRecursosPage')))
+const FeiraPortal          = lazy(() => lazyRetry(() => import('./pages/feira-publica/FeiraPortal')))
+const EscolaPortal        = lazy(() => lazyRetry(() => import('./pages/feira-publica/EscolaPortal')))
+const ProjetoInscricao    = lazy(() => lazyRetry(() => import('./pages/feira-publica/ProjetoInscricao')))
+const ProjetoStatus       = lazy(() => lazyRetry(() => import('./pages/feira-publica/ProjetoStatus')))
 
 function PageLoader() {
   return (

@@ -53,8 +53,23 @@
     ],
     "rewrites": [
       {
-        "source": "**",
+        "regex": "^(?!/(assets|icons|images|img)/).*$",
         "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/index.html",
+        "headers": [
+          { "key": "Cross-Origin-Opener-Policy", "value": "same-origin-allow-popups" },
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/assets/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+        ]
       }
     ]
   },
