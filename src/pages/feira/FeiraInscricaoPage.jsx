@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { feiraInscricoesService, feiraAvaliadorService, feiraAvaliacoesService } from '../../services/feiraService'
 import StatusBadge from '../../components/feira/StatusBadge'
 import DocPreview from '../../components/feira/DocPreview'
-import { CATEGORIAS } from '../../constants/feiraConstants'
+import { CATEGORIAS, normalizarOrientadores } from '../../constants/feiraConstants'
 import toast from 'react-hot-toast'
 
 export default function FeiraInscricaoPage() {
@@ -80,9 +80,13 @@ export default function FeiraInscricaoPage() {
         <StatusBadge status={inscricao.status} />
       </div>
 
-      <Section label="Orientador">
-        <p>{inscricao.orientador?.nome} — {inscricao.orientador?.email} — {inscricao.orientador?.telefone}</p>
-        {inscricao.orientador2?.nome && <p>2º: {inscricao.orientador2.nome} — {inscricao.orientador2.email}</p>}
+      <Section label="Orientador(es)">
+        {normalizarOrientadores(inscricao).map((o, i) => (
+          <p key={i}>
+            {o.matricula_sedf ? <><strong>Mat. {o.matricula_sedf}</strong> — </> : null}
+            {o.nome} — {o.email}{o.telefone ? ` — ${o.telefone}` : ''}
+          </p>
+        ))}
       </Section>
 
       <Section label="Estudantes">
@@ -98,14 +102,14 @@ export default function FeiraInscricaoPage() {
         )}
         {inscricao.documentos?.termo_autorizacao?.url && (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-            <span>Termo de Autorização de Imagem e Voz</span>
+            <span>Termo de Autorização (formato legado — único)</span>
             <DocPreview url={inscricao.documentos.termo_autorizacao.url} nome={inscricao.documentos.termo_autorizacao.nome} />
           </div>
         )}
         {inscricao.documentos?.termos_autorizacao?.map((t, i) => (
           t?.url && (
             <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-              <span>Termo (legado) — {t.estudante_nome || `Estudante ${i + 1}`}</span>
+              <span>Termo — {inscricao.estudantes?.[i]?.nome || `Estudante ${i + 1}`}</span>
               <DocPreview url={t.url} nome={t.nome} />
             </div>
           )

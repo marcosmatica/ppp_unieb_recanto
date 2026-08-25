@@ -67,7 +67,32 @@ export const STATUS_INSCRICAO = {
 
 export const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15 MB
 export const ACCEPTED_FILE_TYPES = { 'application/pdf': ['.pdf'] }
+// Defaults — cada edição pode sobrescrever em `edicao.limites`.
 export const MIN_ESTUDANTES = 2
 export const MAX_ESTUDANTES = 5
+export const MIN_ORIENTADORES = 1
 export const MAX_ORIENTADORES_POR_TRABALHO = 2
+export const MIN_PROJETOS_POR_ORIENTADOR = 0
+export const MAX_PROJETOS_POR_ORIENTADOR = 3
 export const DEBOUNCE_AUTOSAVE_MS = 800
+
+export function getLimites(edicao) {
+  const l = edicao?.limites || {}
+  return {
+    orientadores_min: Number(l.orientadores_min ?? MIN_ORIENTADORES),
+    orientadores_max: Number(l.orientadores_max ?? MAX_ORIENTADORES_POR_TRABALHO),
+    estudantes_min: Number(l.estudantes_min ?? MIN_ESTUDANTES),
+    estudantes_max: Number(l.estudantes_max ?? MAX_ESTUDANTES),
+    projetos_por_orientador_min: Number(l.projetos_por_orientador_min ?? MIN_PROJETOS_POR_ORIENTADOR),
+    projetos_por_orientador_max: Number(l.projetos_por_orientador_max ?? MAX_PROJETOS_POR_ORIENTADOR),
+  }
+}
+
+// Normaliza uma inscrição/rascunho antigo (orientador + orientador2) para o formato novo (orientadores[]).
+export function normalizarOrientadores(reg) {
+  if (Array.isArray(reg?.orientadores) && reg.orientadores.length) return reg.orientadores
+  const arr = []
+  if (reg?.orientador?.nome) arr.push(reg.orientador)
+  if (reg?.orientador2?.nome) arr.push(reg.orientador2)
+  return arr
+}

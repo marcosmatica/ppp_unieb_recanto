@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { feiraEdicoesService, feiraPublicaService } from '../../services/feiraService'
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { storage } from '../../services/firebase'
-import { MAX_FILE_SIZE } from '../../constants/feiraConstants'
+import { MAX_FILE_SIZE, getLimites } from '../../constants/feiraConstants'
 import DocPreview from '../../components/feira/DocPreview'
 import toast from 'react-hot-toast'
 
@@ -19,6 +19,7 @@ export default function FeiraConfigPage() {
     data_inicio: '',
     permitir_reenvio: true,
     modelo_autorizacao_imagem: null,
+    limites: getLimites(null),
   })
   const [uploadPct, setUploadPct] = useState(null)
 
@@ -38,6 +39,7 @@ export default function FeiraConfigPage() {
           data_inicio: ed.data_inicio || '',
           permitir_reenvio: ed.permitir_reenvio !== false,
           modelo_autorizacao_imagem: ed.modelo_autorizacao_imagem || null,
+          limites: getLimites(ed),
         })
       }
     } catch (e) {
@@ -124,6 +126,14 @@ export default function FeiraConfigPage() {
           </Field>
         </div>
 
+        <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 16px' }}>
+          <legend style={{ fontSize: 13, fontWeight: 600, padding: '0 6px' }}>Limites da inscrição</legend>
+          <p style={{ fontSize: 11, color: '#6b7280', margin: '0 0 10px' }}>
+            Vale para novas inscrições desta edição. Chave do orientador = matrícula SEDF.
+          </p>
+          <LimitesGrid limites={form.limites} onChange={l => setForm(f => ({ ...f, limites: l }))} />
+        </fieldset>
+
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
           <input type="checkbox" checked={form.inscricoes_abertas} onChange={e => setForm(f => ({ ...f, inscricoes_abertas: e.target.checked }))} />
           Inscrições abertas
@@ -206,3 +216,26 @@ function Field({ label, children }) {
 }
 
 const inputStyle = { width: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #d1d5db', fontSize: 14, boxSizing: 'border-box' }
+
+function LimitesGrid({ limites, onChange }) {
+  const set = (k, v) => onChange({ ...limites, [k]: Math.max(0, Number(v) || 0) })
+  const rows = [
+    { label: 'Orientadores por projeto', min: 'orientadores_min', max: 'orientadores_max' },
+    { label: 'Estudantes por projeto', min: 'estudantes_min', max: 'estudantes_max' },
+    { label: 'Projetos por orientador (na edição)', min: 'projetos_por_orientador_min', max: 'projetos_por_orientador_max' },
+  ]
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 90px', gap: '8px 12px', alignItems: 'center' }}>
+      <div />
+      <div style={{ fontSize: 11, color: '#6b7280', textAlign: 'center' }}>Mín.</div>
+      <div style={{ fontSize: 11, color: '#6b7280', textAlign: 'center' }}>Máx.</div>
+      {rows.map(r => (
+        <div key={r.min} style={{ display: 'contents' }}>
+          <div style={{ fontSize: 13 }}>{r.label}</div>
+          <input type="number" min={0} value={limites[r.min]} onChange={e => set(r.min, e.target.value)} style={{ ...inputStyle, textAlign: 'center' }} />
+          <input type="number" min={0} value={limites[r.max]} onChange={e => set(r.max, e.target.value)} style={{ ...inputStyle, textAlign: 'center' }} />
+        </div>
+      ))}
+    </div>
+  )
+}

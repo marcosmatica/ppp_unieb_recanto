@@ -22,47 +22,53 @@ export const CONFIRMACOES_PROJETO = [
 export default function ChecklistDocumentosFeira({ edicaoId, escolaInep, projetoId, documentos, estudantes, modeloAutorizacao, confirmacoes, onConfirmacoesChange, onChange, disabled }) {
   const [uploading, setUploading] = useState({})
 
-  const upload = useCallback(async (file, campo) => {
-    const tipos = campo === 'projeto_pesquisa' ? TIPOS_PROJETO : TIPOS_TERMO
+  const upload = useCallback(async (file, campo, estudanteIdx) => {
+    const isProjeto = campo === 'projeto_pesquisa'
+    const tipos = isProjeto ? TIPOS_PROJETO : TIPOS_TERMO
     if (!tipos.includes(file.type)) {
-      return alert(campo === 'projeto_pesquisa'
+      return alert(isProjeto
         ? 'Apenas arquivos PDF são aceitos para o Projeto de Pesquisa.'
         : 'Envie um arquivo PDF ou uma foto (JPG/PNG) do termo assinado.')
     }
     if (file.size > MAX_FILE_SIZE) return alert('Arquivo excede 15 MB.')
 
-    setUploading(u => ({ ...u, [campo]: 0 }))
+    const uploadKey = isProjeto ? 'projeto_pesquisa' : `termo_${estudanteIdx}`
+    setUploading(u => ({ ...u, [uploadKey]: 0 }))
 
     const ts = Date.now()
-    const path = `feira/${edicaoId}/${escolaInep}/${projetoId}/${ts}_${file.name}`
+    const subdir = isProjeto ? 'projeto' : `termo_est_${estudanteIdx}`
+    const path = `feira/${edicaoId}/${escolaInep}/${projetoId}/${subdir}/${ts}_${file.name}`
     const storageRef = ref(storage, path)
     const task = uploadBytesResumable(storageRef, file)
 
     task.on('state_changed',
       snap => {
         const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100)
-        setUploading(u => ({ ...u, [campo]: pct }))
+        setUploading(u => ({ ...u, [uploadKey]: pct }))
       },
       () => {
-        setUploading(u => { const n = { ...u }; delete n[campo]; return n })
+        setUploading(u => { const n = { ...u }; delete n[uploadKey]; return n })
         alert('Erro no upload. Tente novamente.')
       },
       async () => {
         const url = await getDownloadURL(task.snapshot.ref)
         const info = { url, path, nome: file.name, tamanho: file.size, tipo: file.type, enviado_em: new Date().toISOString() }
-        if (campo === 'projeto_pesquisa') {
+        if (isProjeto) {
           onChange({ ...documentos, projeto_pesquisa: info })
         } else {
-          onChange({ ...documentos, termo_autorizacao: info, termos_autorizacao: [] })
+          const arr = Array.isArray(documentos?.termos_autorizacao) ? [...documentos.termos_autorizacao] : []
+          arr[estudanteIdx] = info
+          onChange({ ...documentos, termos_autorizacao: arr })
         }
-        setUploading(u => { const n = { ...u }; delete n[campo]; return n })
+        setUploading(u => { const n = { ...u }; delete n[uploadKey]; return n })
       }
     )
   }, [edicaoId, escolaInep, projetoId, documentos, onChange])
 
   const projOk = !!documentos?.projeto_pesquisa?.url
-  const termo = documentos?.termo_autorizacao
-  const termoOk = !!termo?.url
+  const termosArr = Array.isArray(documentos?.termos_autorizacao) ? documentos.termos_autorizacao : []
+  // Retrocompat: se existe apenas o termo único antigo, exibe como referência mas exige upload individual.
+  const termoLegado = documentos?.termo_autorizacao
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -78,10 +84,9 @@ export default function ChecklistDocumentosFeira({ edicaoId, escolaInep, projeto
       />
 
       <div style={{ marginTop: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>Termo de Autorização de Uso de Imagem e Voz</div>
+        <div style={{ fontSize: 13, fontWeight: 600 }}>Termos de Autorização de Uso de Imagem e Voz</div>
         <p style={{ fontSize: 12, color: '#6b7280', margin: '4px 0 8px' }}>
-          Um único documento por projeto (Anexo VIII). O professor-orientador preenche o modelo listando
-          todos os {(estudantes?.length || 0)} estudantes participantes. Aceito em PDF ou foto (JPG/PNG).
+          Anexo VIII — <strong>um documento assinado por estudante</strong>. Aceito em PDF ou foto (JPG/PNG).
         </p>
         {modeloAutorizacao?.url && (
           <a
@@ -93,17 +98,32 @@ export default function ChecklistDocumentosFeira({ edicaoId, escolaInep, projeto
             ↓ Baixar modelo de autorização
           </a>
         )}
-        <DocItem
-          label="Termo de autorização assinado"
-          ok={termoOk}
-          progress={uploading.termo_autorizacao}
-          fileName={termo?.nome}
-          url={termo?.url}
-          onFile={f => upload(f, 'termo_autorizacao')}
-          disabled={disabled}
-          accept=".pdf,image/*"
-          captureHint
-        />
+        {termoLegado?.url && !termosArr.length && (
+          <div style={{ fontSize: 11, color: '#b45309', background: '#fef3c7', padding: 8, borderRadius: 6, marginBottom: 8 }}>
+            Um termo único foi enviado anteriormente. A partir desta edição é necessário enviar um termo por estudante.
+          </div>
+        )}
+        {(estudantes || []).map((est, idx) => {
+          const info = termosArr[idx]
+          return (
+            <div key={idx} style={{ marginBottom: 8 }}>
+              <DocItem
+                label={`Termo — ${est?.nome || `Estudante ${idx + 1}`}`}
+                ok={!!info?.url}
+                progress={uploading[`termo_${idx}`]}
+                fileName={info?.nome}
+                url={info?.url}
+                onFile={f => upload(f, 'termo_autorizacao', idx)}
+                disabled={disabled}
+                accept=".pdf,image/*"
+                captureHint
+              />
+            </div>
+          )
+        })}
+        {!(estudantes || []).length && (
+          <p style={{ fontSize: 12, color: '#dc2626' }}>Cadastre os estudantes na etapa anterior para anexar as autorizações.</p>
+        )}
       </div>
 
       <div style={{ marginTop: 12, padding: '14px 16px', borderRadius: 10, border: '1px solid #e5e7eb', background: '#f9fafb' }}>

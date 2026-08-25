@@ -99,14 +99,61 @@ const feiraEnviar = onCall(
       }
     }
 
-    if (!payload.titulo || !payload.categoria || !payload.orientador?.nome) {
+    // Normaliza orientadores: aceita `orientadores[]` (novo) ou `orientador`/`orientador2` (legado)
+    const orientadoresIn = Array.isArray(payload.orientadores) && payload.orientadores.length
+      ? payload.orientadores
+      : [payload.orientador, payload.orientador2].filter(o => o && o.nome)
+    if (!payload.titulo || !payload.categoria || !orientadoresIn[0]?.nome) {
       throw new HttpsError("invalid-argument", "Campos obrigatórios não preenchidos")
     }
     if (!payload.documentos?.projeto_pesquisa?.url) {
       throw new HttpsError("invalid-argument", "Projeto de Pesquisa obrigatório")
     }
-    if (!payload.estudantes?.length || payload.estudantes.length < 2) {
-      throw new HttpsError("invalid-argument", "Mínimo de 2 estudantes")
+    const estMin = edicao?.limites?.estudantes_min ?? 2
+    if (!payload.estudantes?.length || payload.estudantes.length < estMin) {
+      throw new HttpsError("invalid-argument", `Mínimo de ${estMin} estudante(s)`)
+    }
+    // Termos por estudante (novo formato); tolera formato legado (termo_autorizacao único)
+    const termosArr = payload.documentos?.termos_autorizacao || []
+    const temTermoPorEstudante = payload.estudantes.every((_, i) => !!termosArr[i]?.url)
+    if (!temTermoPorEstudante && !payload.documentos?.termo_autorizacao?.url) {
+      throw new HttpsError("invalid-argument", "Termo de autorização de imagem obrigatório para cada estudante")
+    }
+    const orientadoresMatriculas = orientadoresIn
+      .map(o => String(o.matricula_sedf || "").trim())
+      .filter(Boolean)
+
+    // Limites de orientadores por projeto
+    const orientMin = edicao?.limites?.orientadores_min ?? 1
+    const orientMax = edicao?.limites?.orientadores_max ?? 2
+    if (orientadoresIn.length < orientMin || orientadoresIn.length > orientMax) {
+      throw new HttpsError("invalid-argument", `Projeto deve ter entre ${orientMin} e ${orientMax} orientador(es)`)
+    }
+    // Limite máximo de estudantes
+    const estMax = edicao?.limites?.estudantes_max ?? 5
+    if (payload.estudantes.length > estMax) {
+      throw new HttpsError("invalid-argument", `Máximo de ${estMax} estudante(s)`)
+    }
+    // Limite de projetos por orientador (matrícula SEDF)
+    const projMax = edicao?.limites?.projetos_por_orientador_max
+    if (projMax != null && orientadoresMatriculas.length) {
+      for (const mat of orientadoresMatriculas) {
+        const [snapI, snapR] = await Promise.all([
+          db.collection("feira_inscricoes")
+            .where("edicao_id", "==", payload.edicao_id)
+            .where("orientadores_matriculas", "array-contains", mat).get(),
+          db.collection("feira_rascunhos")
+            .where("edicao_id", "==", payload.edicao_id)
+            .where("orientadores_matriculas", "array-contains", mat).get(),
+        ])
+        const ids = new Set()
+        snapI.docs.forEach(d => ids.add(`i/${d.id}`))
+        snapR.docs.forEach(d => { if (d.id !== rascunhoId) ids.add(`r/${d.id}`) })
+        if (ids.size >= projMax) {
+          throw new HttpsError("failed-precondition",
+            `Orientador com matrícula ${mat} já atingiu o limite de ${projMax} projeto(s) nesta edição`)
+        }
+      }
     }
 
     const inscricaoRef = db.collection("feira_inscricoes").doc()
@@ -116,8 +163,10 @@ const feiraEnviar = onCall(
       link_escola_token: payload.link_escola_token,
       status: "enviada",
       escola: payload.escola,
-      orientador: payload.orientador,
-      orientador2: payload.orientador2 || null,
+      orientadores: orientadoresIn,
+      orientadores_matriculas: orientadoresMatriculas,
+      orientador: orientadoresIn[0] || null,
+      orientador2: orientadoresIn[1] || null,
       titulo: payload.titulo,
       categoria: payload.categoria,
       resumo: payload.resumo || "",
@@ -173,12 +222,55 @@ const feiraReenviar = onCall(
       throw new HttpsError("failed-precondition", "Reenvio de projetos está desabilitado")
     }
 
+    const orientadoresRe = Array.isArray(payload.orientadores) && payload.orientadores.length
+      ? payload.orientadores
+      : [payload.orientador, payload.orientador2].filter(o => o && o.nome)
+    const orientadoresMatriculasRe = orientadoresRe
+      .map(o => String(o.matricula_sedf || "").trim())
+      .filter(Boolean)
+
+    // Aplica limites configurados na edição também no reenvio
+    const edicaoR = edicaoRSnap.exists ? edicaoRSnap.data() : {}
+    const orientMinR = edicaoR?.limites?.orientadores_min ?? 1
+    const orientMaxR = edicaoR?.limites?.orientadores_max ?? 2
+    if (orientadoresRe.length < orientMinR || orientadoresRe.length > orientMaxR) {
+      throw new HttpsError("invalid-argument", `Projeto deve ter entre ${orientMinR} e ${orientMaxR} orientador(es)`)
+    }
+    const estMinR = edicaoR?.limites?.estudantes_min ?? 2
+    const estMaxR = edicaoR?.limites?.estudantes_max ?? 5
+    if (!payload.estudantes?.length || payload.estudantes.length < estMinR || payload.estudantes.length > estMaxR) {
+      throw new HttpsError("invalid-argument", `Quantidade de estudantes deve ficar entre ${estMinR} e ${estMaxR}`)
+    }
+    const projMaxR = edicaoR?.limites?.projetos_por_orientador_max
+    if (projMaxR != null && orientadoresMatriculasRe.length) {
+      for (const mat of orientadoresMatriculasRe) {
+        const [snapI, snapRasc] = await Promise.all([
+          db.collection("feira_inscricoes")
+            .where("edicao_id", "==", insc.edicao_id)
+            .where("orientadores_matriculas", "array-contains", mat).get(),
+          db.collection("feira_rascunhos")
+            .where("edicao_id", "==", insc.edicao_id)
+            .where("orientadores_matriculas", "array-contains", mat).get(),
+        ])
+        const ids = new Set()
+        // Não conta a própria inscrição em reenvio
+        snapI.docs.forEach(d => { if (d.id !== inscDoc.id) ids.add(`i/${d.id}`) })
+        snapRasc.docs.forEach(d => { if (d.id !== rascunhoId) ids.add(`r/${d.id}`) })
+        if (ids.size >= projMaxR) {
+          throw new HttpsError("failed-precondition",
+            `Orientador com matrícula ${mat} já atingiu o limite de ${projMaxR} projeto(s) nesta edição`)
+        }
+      }
+    }
+
     const novoEnvio = (insc.envio_num || 1) + 1
     await inscDoc.ref.update({
       status: "reenviada",
       escola: payload.escola,
-      orientador: payload.orientador,
-      orientador2: payload.orientador2 || null,
+      orientadores: orientadoresRe,
+      orientadores_matriculas: orientadoresMatriculasRe,
+      orientador: orientadoresRe[0] || null,
+      orientador2: orientadoresRe[1] || null,
       titulo: payload.titulo,
       categoria: payload.categoria,
       resumo: payload.resumo || "",

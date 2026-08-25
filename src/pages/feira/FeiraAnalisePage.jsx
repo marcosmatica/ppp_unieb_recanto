@@ -13,7 +13,7 @@ import {
 import toast from 'react-hot-toast'
 import '../AnalysisReview.css'
 import '../../components/DocumentViewer.css'
-import { MIN_ESTUDANTES, MAX_ESTUDANTES, MAX_ORIENTADORES_POR_TRABALHO } from '../../constants/feiraConstants'
+import { getLimites, normalizarOrientadores } from '../../constants/feiraConstants'
 
 const COL_DEFAULTS = { drawer: 320, card: 400 }
 const COL_MIN      = { drawer: 240, card: 320 }
@@ -85,20 +85,22 @@ const ALL_ITEMS = GRUPOS_AVALIACAO.flatMap(g => g.itens)
 
 const PDF_MAX_BYTES = 10 * 1024 * 1024
 
-function computeAutoChecks(inscricao) {
+function computeAutoChecks(inscricao, edicao) {
   if (!inscricao) return {}
   const proj  = inscricao.documentos?.projeto_pesquisa
-  const termo = inscricao.documentos?.termo_autorizacao
-  const termosLegado = inscricao.documentos?.termos_autorizacao || []
+  const termoLegado = inscricao.documentos?.termo_autorizacao
+  const termosArr = inscricao.documentos?.termos_autorizacao || []
   const estudantes = inscricao.estudantes || []
   const out = {}
+  const lim = getLimites(edicao)
 
   out.projeto_enviado_ok = !!proj?.url
-  out.termo_enviado_ok = !!termo?.url || termosLegado.some(t => t?.url)
-  out.qtd_estudantes_ok = estudantes.length >= MIN_ESTUDANTES && estudantes.length <= MAX_ESTUDANTES
+  const termosPorEstudante = estudantes.every((_, i) => !!termosArr[i]?.url)
+  out.termo_enviado_ok = termosPorEstudante || !!termoLegado?.url
+  out.qtd_estudantes_ok = estudantes.length >= lim.estudantes_min && estudantes.length <= lim.estudantes_max
 
-  const orientadores = [inscricao.orientador, inscricao.orientador2].filter(o => o?.nome).length
-  out.orientador_limite_ok = orientadores > 0 && orientadores <= MAX_ORIENTADORES_POR_TRABALHO
+  const orientadores = normalizarOrientadores(inscricao).length
+  out.orientador_limite_ok = orientadores >= lim.orientadores_min && orientadores <= lim.orientadores_max
 
   if (proj) {
     const isPdf = (proj.tipo === 'application/pdf') || /\.pdf$/i.test(proj.nome || '')
@@ -160,10 +162,13 @@ export default function FeiraAnalisePage() {
       list.push({ key: 'projeto', label: 'Projeto de Pesquisa', doc: inscricao.documentos.projeto_pesquisa })
     }
     if (inscricao.documentos?.termo_autorizacao?.url) {
-      list.push({ key: 'termo', label: 'Termo de Autorização', doc: inscricao.documentos.termo_autorizacao })
+      list.push({ key: 'termo', label: 'Termo de Autorização (legado)', doc: inscricao.documentos.termo_autorizacao })
     }
     ;(inscricao.documentos?.termos_autorizacao || []).forEach((t, i) => {
-      if (t?.url) list.push({ key: `termo_${i}`, label: `Termo — ${t.estudante_nome || `Estudante ${i + 1}`}`, doc: t, legado: true, idx: i })
+      if (t?.url) {
+        const nomeEst = inscricao.estudantes?.[i]?.nome || t.estudante_nome || `Estudante ${i + 1}`
+        list.push({ key: `termo_${i}`, label: `Termo — ${nomeEst}`, doc: t, idx: i })
+      }
     })
     return list
   }, [inscricao])
@@ -620,23 +625,25 @@ function AutoCheckBanner({ ok, detail }) {
 
 function autoCheckDetail(key, i) {
   const proj = i?.documentos?.projeto_pesquisa
-  const termo = i?.documentos?.termo_autorizacao
-  const termosLegado = i?.documentos?.termos_autorizacao || []
+  const termoLegado = i?.documentos?.termo_autorizacao
+  const termosArr = i?.documentos?.termos_autorizacao || []
   const estudantes = i?.estudantes || []
-  const orientadores = [i?.orientador, i?.orientador2].filter(o => o?.nome).length
+  const orientadores = normalizarOrientadores(i).length
+  const lim = getLimites(null)
 
   switch (key) {
     case 'projeto_enviado_ok':
       return proj?.url ? `Projeto enviado: ${proj.nome || 'arquivo anexado'}.` : 'Nenhum arquivo de Projeto de Pesquisa foi anexado.'
     case 'termo_enviado_ok': {
-      if (termo?.url) return `Termo enviado: ${termo.nome || 'arquivo anexado'}.`
-      const n = termosLegado.filter(t => t?.url).length
-      return n > 0 ? `Termos (legado) enviados: ${n}.` : 'Nenhum termo de autorização foi anexado.'
+      const n = termosArr.filter(t => t?.url).length
+      if (n >= estudantes.length && estudantes.length > 0) return `${n} termo(s) — um por estudante.`
+      if (termoLegado?.url) return `Termo único (formato legado) enviado: ${termoLegado.nome || 'arquivo anexado'}.`
+      return n > 0 ? `Apenas ${n}/${estudantes.length} termos enviados.` : 'Nenhum termo de autorização foi anexado.'
     }
     case 'qtd_estudantes_ok':
-      return `Quantidade informada: ${estudantes.length} (permitido: ${MIN_ESTUDANTES}–${MAX_ESTUDANTES}).`
+      return `Quantidade informada: ${estudantes.length} (permitido: ${lim.estudantes_min}–${lim.estudantes_max}).`
     case 'orientador_limite_ok':
-      return `Orientadores cadastrados: ${orientadores} (limite por trabalho: ${MAX_ORIENTADORES_POR_TRABALHO}).`
+      return `Orientadores cadastrados: ${orientadores} (permitido: ${lim.orientadores_min}–${lim.orientadores_max}).`
     case 'fmt_pdf_10mb': {
       if (!proj) return 'Projeto não enviado.'
       const mb = typeof proj.tamanho === 'number' ? (proj.tamanho / 1024 / 1024).toFixed(2) + ' MB' : 'tamanho desconhecido'

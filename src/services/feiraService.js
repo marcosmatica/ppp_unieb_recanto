@@ -102,6 +102,26 @@ export const feiraInscricoesService = {
       if (snap.exists()) callback({ id: snap.id, ...snap.data() })
     })
   },
+
+  // Conta projetos (inscrições + rascunhos) em que o orientador aparece na edição.
+  // Usa o campo escalar `orientadores_matriculas` (array-contains).
+  // Ignora o próprio doc, se `excluirId` for informado.
+  async contarPorOrientadorMatricula(edicaoId, matricula, excluirId) {
+    if (!matricula) return 0
+    const matches = new Set()
+    const consultar = async (coll) => {
+      const qy = query(
+        col(coll),
+        where('edicao_id', '==', edicaoId),
+        where('orientadores_matriculas', 'array-contains', String(matricula).trim())
+      )
+      const snap = await getDocs(qy)
+      snap.docs.forEach(d => { if (d.id !== excluirId) matches.add(`${coll}/${d.id}`) })
+    }
+    try { await consultar('feira_inscricoes') } catch (e) { console.warn(e) }
+    try { await consultar('feira_rascunhos') } catch (e) { console.warn(e) }
+    return matches.size
+  },
 }
 
 // ─── Rascunhos ───────────────────────────────────────────────────────────────

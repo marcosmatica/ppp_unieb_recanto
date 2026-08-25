@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { feiraRascunhosService, feiraLinksService } from '../../services/feiraService'
 import StatusBadge from '../../components/feira/StatusBadge'
 import DocPreview from '../../components/feira/DocPreview'
-import { CATEGORIAS } from '../../constants/feiraConstants'
+import { CATEGORIAS, normalizarOrientadores } from '../../constants/feiraConstants'
 import { collection, query, where, limit, getDocs } from 'firebase/firestore'
 import { db } from '../../services/firebase'
 
@@ -55,9 +55,13 @@ export default function ProjetoStatus() {
         <StatusBadge status={projeto.status} />
       </div>
 
-      <Section label="Orientador">
-        <p>{projeto.orientador?.nome} — {projeto.orientador?.email}</p>
-        {projeto.orientador2?.nome && <p>2º: {projeto.orientador2.nome} — {projeto.orientador2.email}</p>}
+      <Section label="Orientador(es)">
+        {normalizarOrientadores(projeto).map((o, i) => (
+          <p key={i}>
+            {o.matricula_sedf ? <><strong>Mat. {o.matricula_sedf}</strong> — </> : null}
+            {o.nome} — {o.email}
+          </p>
+        ))}
       </Section>
 
       <Section label="Estudantes">
@@ -73,23 +77,21 @@ export default function ProjetoStatus() {
             <DocPreview url={projeto.documentos.projeto_pesquisa.url} nome={projeto.documentos.projeto_pesquisa.nome} />
           </div>
         ) : <p>✗ Projeto de Pesquisa pendente</p>}
-        {(() => {
-          const t = projeto.documentos?.termo_autorizacao
+        {projeto.documentos?.termo_autorizacao?.url && (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+            <span>✓ Termo de Autorização (formato legado — único)</span>
+            <DocPreview url={projeto.documentos.termo_autorizacao.url} nome={projeto.documentos.termo_autorizacao.nome} />
+          </div>
+        )}
+        {projeto.estudantes?.map((est, i) => {
+          const t = projeto.documentos?.termos_autorizacao?.[i]
           return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-              <span>{t?.url ? '✓' : '✗'} Termo de Autorização de Imagem e Voz</span>
+            <div key={`termo-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+              <span>{t?.url ? '✓' : '✗'} Termo — {est.nome || `Estudante ${i + 1}`}</span>
               {t?.url && <DocPreview url={t.url} nome={t.nome} />}
             </div>
           )
-        })()}
-        {projeto.documentos?.termos_autorizacao?.map((t, i) => (
-          t?.url && (
-            <div key={`legado-${i}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
-              <span>✓ Termo (legado) — {t.estudante_nome || `Estudante ${i + 1}`}</span>
-              <DocPreview url={t.url} nome={t.nome} />
-            </div>
-          )
-        ))}
+        })}
       </Section>
 
       {isDevolvido && (

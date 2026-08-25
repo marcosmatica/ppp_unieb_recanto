@@ -47,6 +47,22 @@
         { "fieldPath": "cre",       "order": "ASCENDING"  },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "feira_inscricoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "edicao_id",              "order": "ASCENDING" },
+        { "fieldPath": "orientadores_matriculas","arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "feira_rascunhos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "edicao_id",              "order": "ASCENDING" },
+        { "fieldPath": "orientadores_matriculas","arrayConfig": "CONTAINS" }
+      ]
     }
   ],
   "fieldOverrides": []
