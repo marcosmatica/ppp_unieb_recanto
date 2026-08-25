@@ -2,7 +2,8 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { auth, db, googleProvider } from '../services/firebase'
+import { httpsCallable } from 'firebase/functions'
+import { auth, db, googleProvider, functions } from '../services/firebase'
 import { REGIONALS } from '../constants/regionals' // Importar regionais
 
 const AuthContext = createContext(null)
@@ -30,6 +31,21 @@ export function AuthProvider({ children }) {
         const snap = await getDoc(ref)
 
         if (!snap.exists()) {
+          // Tenta reivindicar convite pendente pelo email
+          try {
+            const claim = httpsCallable(functions, 'claimInvite')
+            await claim({})
+            const snap2 = await getDoc(ref)
+            if (snap2.exists()) {
+              setUser(firebaseUser)
+              setProfile({ uid: firebaseUser.uid, ...snap2.data() })
+              setUnauthorized(false)
+              setLoading(false)
+              return
+            }
+          } catch (e) {
+            // sem convite ou falha — segue fluxo de não autorizado
+          }
           await signOut(auth)
           setUser(null)
           setProfile(null)

@@ -17,6 +17,10 @@ service cloud.firestore {
     }
     function isAdmin() { return isWhitelisted() && role() == 'admin'; }
 
+    match /pending_invites/{email} {
+      allow read, write: if isAdmin();
+    }
+
     match /users/{userId} {
       allow get: if isAuth() && request.auth.uid == userId;
       allow list, read: if isWhitelisted();

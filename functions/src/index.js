@@ -16,6 +16,7 @@ const { getDocumentViewerUrl } = require('./report/getDocumentViewerUrl')
 const { buildParecer } = require('./parecer/buildParecer')
 const { finalizarParecer } = require('./parecer/finalizarParecer')
 const { exportParecerPdf } = require('./parecer/exportParecerPdf')
+const { inviteUser, claimInvite, revokeInvite } = require('./inviteUser')
 const { feiraGerarLinks, feiraEnviar, feiraReenviar, feiraCalcularResultados, feiraOnAvaliacaoWrite, feiraOnInscricaoStatusChange, feiraBackfillRascunhoStatus, feiraRecalcularRecurso, feiraPublicarResultadoFinal, feiraGerarCertificados, feiraGerarRelatorioSEI, feiraLookupEscola, feiraEnviarLinkEmail } = require('./feira')
 
 module.exports = {
@@ -43,4 +44,7 @@ module.exports = {
   feiraGerarRelatorioSEI,
   feiraLookupEscola,
   feiraEnviarLinkEmail,
+  inviteUser,
+  claimInvite,
+  revokeInvite,
 }
