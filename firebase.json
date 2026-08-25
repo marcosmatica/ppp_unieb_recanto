@@ -53,7 +53,7 @@
     ],
     "rewrites": [
       {
-        "regex": "^(?!/(assets|icons|images|img)/).*$",
+        "source": "**/!(*.@(js|mjs|css|map|json|png|jpg|jpeg|gif|svg|ico|webp|avif|woff|woff2|ttf|otf|eot|webmanifest|txt|xml|pdf))",
         "destination": "/index.html"
       }
     ],
