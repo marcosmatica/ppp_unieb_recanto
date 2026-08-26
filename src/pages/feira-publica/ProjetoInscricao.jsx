@@ -33,7 +33,7 @@ export default function ProjetoInscricao() {
 
   const [form, setForm] = useState({
     orientadores: [orientadorVazio()],
-    estudantes: [{ nome: '', serie: '', turma: '', categoria: '' }, { nome: '', serie: '', turma: '', categoria: '' }],
+    estudantes: [{ nome: '', categoria: '' }, { nome: '', categoria: '' }],
     titulo: '',
     categoria: '',
     resumo: '',
@@ -88,7 +88,7 @@ export default function ProjetoInscricao() {
         // Garante que o primeiro carregamento respeite estudantes_min da edição
         setForm(f => {
           const est = [...f.estudantes]
-          while (est.length < lim.estudantes_min) est.push({ nome: '', serie: '', turma: '', categoria: '' })
+          while (est.length < lim.estudantes_min) est.push({ nome: '', categoria: '' })
           return { ...f, estudantes: est.slice(0, lim.estudantes_max) }
         })
       }
@@ -154,7 +154,7 @@ export default function ProjetoInscricao() {
   // Estudantes
   function addEstudante() {
     if (form.estudantes.length >= limites.estudantes_max) return
-    updateForm({ estudantes: [...form.estudantes, { nome: '', serie: '', turma: '', categoria: '' }] })
+    updateForm({ estudantes: [...form.estudantes, { nome: '', categoria: '' }] })
   }
   function removeEstudante(i) {
     if (form.estudantes.length <= limites.estudantes_min) return
@@ -290,9 +290,7 @@ export default function ProjetoInscricao() {
           {form.estudantes.map((est, i) => (
             <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid #e5e7eb', borderRadius: 8, padding: 10 }}>
               <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-                <Input label={`Estudante ${i + 1}`} value={est.nome} onChange={v => { const e = [...form.estudantes]; e[i] = { ...e[i], nome: v }; updateForm({ estudantes: e }) }} style={{ flex: 2 }} />
-                <Input label="Série" value={est.serie} onChange={v => { const e = [...form.estudantes]; e[i] = { ...e[i], serie: v }; updateForm({ estudantes: e }) }} style={{ flex: 1 }} />
-                <Input label="Turma" value={est.turma} onChange={v => { const e = [...form.estudantes]; e[i] = { ...e[i], turma: v }; updateForm({ estudantes: e }) }} style={{ width: 70 }} />
+                <Input label={`Estudante ${i + 1}`} value={est.nome} onChange={v => { const e = [...form.estudantes]; e[i] = { ...e[i], nome: v }; updateForm({ estudantes: e }) }} style={{ flex: 1 }} />
                 {form.estudantes.length > limites.estudantes_min && (
                   <button type="button" onClick={() => removeEstudante(i)} style={{ padding: '6px 10px', border: '1px solid #fca5a5', borderRadius: 6, background: '#fff', color: '#dc2626', cursor: 'pointer', fontSize: 13, marginBottom: 0 }}>×</button>
                 )}
@@ -352,7 +350,7 @@ export default function ProjetoInscricao() {
               o.telefone,
             ].filter(Boolean)} />
           ))}
-          <ReviewSection label="Estudantes" items={form.estudantes.map(e => `${e.nome} — ${e.serie} ${e.turma}`)} />
+          <ReviewSection label="Estudantes" items={form.estudantes.map(e => e.nome)} />
           <ReviewSection label="Projeto" items={[form.titulo, `Categoria: ${form.categoria}`, form.etapa_local_realizada ? 'Etapa local realizada' : 'Etapa local não realizada']} />
           <ReviewSection label="Documentos" items={[
             form.documentos?.projeto_pesquisa?.url ? '✓ Projeto de Pesquisa' : '✗ Projeto de Pesquisa',
