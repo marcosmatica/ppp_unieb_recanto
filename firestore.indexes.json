@@ -127,6 +127,14 @@
         { "fieldPath": "schoolId",  "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "feira_links_escolas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "edicao_id",   "order": "ASCENDING" },
+        { "fieldPath": "escola_nome", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []
