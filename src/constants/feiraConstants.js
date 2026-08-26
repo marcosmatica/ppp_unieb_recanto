@@ -1,16 +1,16 @@
 // src/constants/feiraConstants.js
 
 export const CATEGORIAS = [
-  { value: 'A', label: 'A — Educação Infantil (Creche)', etapa: 'creche' },
-  { value: 'B', label: 'B — Educação Infantil (Pré-escola)', etapa: 'pre_escola' },
-  { value: 'C', label: 'C — Anos Iniciais (1º ao 3º ano)', etapa: 'anos_iniciais_1' },
-  { value: 'D', label: 'D — Anos Iniciais (4º e 5º ano)', etapa: 'anos_iniciais_2' },
-  { value: 'E', label: 'E — Anos Finais (6º e 7º ano)', etapa: 'anos_finais_1' },
-  { value: 'F', label: 'F — Anos Finais (8º e 9º ano)', etapa: 'anos_finais_2' },
-  { value: 'G', label: 'G — Ensino Médio (1ª série)', etapa: 'medio_1' },
-  { value: 'H', label: 'H — Ensino Médio (2ª e 3ª série)', etapa: 'medio_2' },
-  { value: 'I', label: 'I — Educação de Jovens e Adultos', etapa: 'eja' },
-  { value: 'J', label: 'J — Educação Especial', etapa: 'especial' },
+  { value: 'A', label: 'A – Educação Infantil', etapa: 'infantil' },
+  { value: 'B', label: 'B – Ensino Fundamental – Anos Iniciais (1º ao 5º ano)', etapa: 'anos_iniciais' },
+  { value: 'C', label: 'C – Ensino Fundamental – Anos Finais (6º ao 9º ano)', etapa: 'anos_finais' },
+  { value: 'D', label: 'D – 1º Segmento da Educação de Jovens e Adultos e Educação Prisional', etapa: 'eja_1' },
+  { value: 'E', label: 'E – 2º Segmento da Educação de Jovens e Adultos e Educação Prisional', etapa: 'eja_2' },
+  { value: 'F', label: 'F – 3º Segmento da Educação de Jovens e Adultos, Ensino Médio Noturno e Educação Prisional', etapa: 'eja_3' },
+  { value: 'G', label: 'G – Centro de Ensino Especial (CEE), EJA Interventiva, Sala de Recursos Generalista (SRG), Salas de Recursos Generalista Bilíngue (SRGB), Sala de Recursos Específica (SRE), Sala de Apoio à Aprendizagem (SAA) e Classe Especial (CE)', etapa: 'especial' },
+  { value: 'H', label: 'H – Altas Habilidades/Superdotação (AH/SD)', etapa: 'ahsd' },
+  { value: 'I', label: 'I – Ensino Médio Regular', etapa: 'medio' },
+  { value: 'J', label: 'J – Ensino Médio em Tempo Integral (EMTI) e Educação Profissional e Tecnológica, nas formas: Concomitante, Subsequente e Integrada ao Ensino Médio ou à EJA', etapa: 'emti_ept' },
 ]
 
 export const CRITERIOS_AVALIACAO = [

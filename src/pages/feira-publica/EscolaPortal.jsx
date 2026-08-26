@@ -62,6 +62,33 @@ export default function EscolaPortal() {
         </div>
       )}
 
+      <div style={{
+        padding: '14px 18px', borderRadius: 12,
+        background: '#fef3c7', border: '1px solid #fcd34d',
+        marginBottom: 24, fontSize: 13,
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+      }}>
+        <div>
+          <strong>📄 Regulamento do 15º Circuito de Ciências</strong>
+          <div style={{ color: '#78350f', marginTop: 2 }}>
+            Leia antes de inscrever seus projetos.
+          </div>
+        </div>
+        <a
+          href="/regulamento-15-circuito-ciencias-2026.pdf"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            padding: '8px 14px', borderRadius: 8,
+            background: '#b45309', color: '#fff',
+            fontSize: 13, fontWeight: 600, textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Baixar PDF
+        </a>
+      </div>
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <h2 style={{ fontSize: 16, margin: 0 }}>Projetos inscritos ({projetos.length})</h2>
         {inscricoesAbertas && (

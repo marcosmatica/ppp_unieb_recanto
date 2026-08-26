@@ -208,10 +208,18 @@ export default function FeiraPortal() {
               <h2 style={{ fontSize: 18, fontWeight: 600, color: '#166534', marginBottom: 8 }}>
                 Link enviado!
               </h2>
-              <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 20 }}>
+              <p style={{ fontSize: 14, color: '#374151', marginBottom: 12 }}>
                 O link de inscrição foi enviado para <strong>{email}</strong>.
-                Verifique sua caixa de entrada (e a pasta de spam).
               </p>
+              <div style={{
+                background: '#fef3c7', border: '1px solid #fcd34d',
+                color: '#92400e', borderRadius: 8, padding: '10px 12px',
+                fontSize: 13, marginBottom: 20, textAlign: 'left',
+              }}>
+                ⚠️ <strong>Atenção:</strong> é possível que o e-mail esteja na
+                <strong> caixa de spam</strong> ou lixo eletrônico. Verifique também
+                essas pastas caso não encontre na caixa de entrada.
+              </div>
               <button
                 onClick={() => { setStep('inep'); setInep(''); setEmail(''); setEscola(null); setSucesso(false); setErro(null) }}
                 style={{
