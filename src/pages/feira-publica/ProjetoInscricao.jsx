@@ -6,8 +6,8 @@ import CategoriaSelect from '../../components/feira/CategoriaSelect'
 import ChecklistDocumentosFeira, { CONFIRMACOES_PROJETO } from '../../components/feira/ChecklistDocumentosFeira'
 import { DEBOUNCE_AUTOSAVE_MS, getLimites, normalizarOrientadores } from '../../constants/feiraConstants'
 
-const EMAIL_DOMINIOS_PERMITIDOS = ['@edu', '@professor', '@professortmp', '@servidor']
-const EMAIL_REGEX_PERMITIDO = /@(edu|professor|professortmp|servidor)(\.|$)/i
+const EMAIL_DOMINIOS_PERMITIDOS = ['@edu', '@professor', '@professortmp', '@servidor', '@se']
+const EMAIL_REGEX_PERMITIDO = /@(edu|professor|professortmp|servidor|se)(\.|$)/i
 function emailPermitido(email) {
   if (!email) return false
   return EMAIL_REGEX_PERMITIDO.test(String(email).trim().toLowerCase())

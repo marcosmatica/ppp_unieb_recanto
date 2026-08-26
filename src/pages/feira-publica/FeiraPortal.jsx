@@ -4,7 +4,7 @@ const FUNCTIONS_BASE = import.meta.env.VITE_FUNCTIONS_BASE_URL
   || 'https://southamerica-east1-unieb-recanto.cloudfunctions.net'
 
 const EMAIL_DOMINIOS_PERMITIDOS = ['@edu', '@professor', '@professortmp', '@servidor', '@se']
-const EMAIL_REGEX_PERMITIDO = /@(edu|professor|professortmp|servidor)(\.|$)/i
+const EMAIL_REGEX_PERMITIDO = /@(edu|professor|professortmp|servidor|se)(\.|$)/i
 function emailPermitido(email) {
   if (!email) return false
   return EMAIL_REGEX_PERMITIDO.test(String(email).trim().toLowerCase())
