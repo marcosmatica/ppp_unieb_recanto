@@ -3,11 +3,9 @@ import { useState } from 'react'
 const FUNCTIONS_BASE = import.meta.env.VITE_FUNCTIONS_BASE_URL
   || 'https://southamerica-east1-unieb-recanto.cloudfunctions.net'
 
-const EMAIL_DOMINIOS_PERMITIDOS = ['@edu', '@professor', '@professortmp', '@servidor', '@se']
-const EMAIL_REGEX_PERMITIDO = /@(edu|professor|professortmp|servidor|se)(\.|$)/i
 function emailPermitido(email) {
   if (!email) return false
-  return EMAIL_REGEX_PERMITIDO.test(String(email).trim().toLowerCase())
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())
 }
 
 export default function FeiraPortal() {
@@ -44,7 +42,7 @@ export default function FeiraPortal() {
     e.preventDefault()
     setErro(null)
     if (!emailPermitido(email)) {
-      setErro(`Use apenas e-mail institucional (${EMAIL_DOMINIOS_PERMITIDOS.join(', ')}).`)
+      setErro('Informe um e-mail válido.')
       return
     }
     setLoading(true)
@@ -176,7 +174,6 @@ export default function FeiraPortal() {
               />
               <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20 }}>
                 O link de inscrição da sua escola será enviado para este email.
-                Use apenas e-mail institucional ({EMAIL_DOMINIOS_PERMITIDOS.join(', ')}).
               </p>
               {erro && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 12 }}>{erro}</p>}
               <button

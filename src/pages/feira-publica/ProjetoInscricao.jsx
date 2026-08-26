@@ -6,11 +6,9 @@ import CategoriaSelect from '../../components/feira/CategoriaSelect'
 import ChecklistDocumentosFeira, { CONFIRMACOES_PROJETO } from '../../components/feira/ChecklistDocumentosFeira'
 import { DEBOUNCE_AUTOSAVE_MS, getLimites, normalizarOrientadores } from '../../constants/feiraConstants'
 
-const EMAIL_DOMINIOS_PERMITIDOS = ['@edu', '@professor', '@professortmp', '@servidor', '@se']
-const EMAIL_REGEX_PERMITIDO = /@(edu|professor|professortmp|servidor|se)(\.|$)/i
 function emailPermitido(email) {
   if (!email) return false
-  return EMAIL_REGEX_PERMITIDO.test(String(email).trim().toLowerCase())
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())
 }
 function matriculaValida(m) {
   const s = String(m || '').trim()
@@ -237,7 +235,7 @@ export default function ProjetoInscricao() {
               Professor(es)-orientador(es) ({form.orientadores.length}/{limites.orientadores_max})
             </h3>
             <p style={{ fontSize: 11, color: '#6b7280', margin: '2px 0 0' }}>
-              Mínimo {limites.orientadores_min}, máximo {limites.orientadores_max}. Matrícula SEDF e e-mail institucional são obrigatórios.
+              Mínimo {limites.orientadores_min}, máximo {limites.orientadores_max}. Matrícula SEDF e e-mail são obrigatórios.
             </p>
           </div>
 
@@ -264,10 +262,10 @@ export default function ProjetoInscricao() {
                   <Input label="Telefone" value={o.telefone} onChange={v => setOrientadorField(i, 'telefone', v)} style={{ flex: 1 }} />
                 </div>
                 <Input label="Nome completo *" value={o.nome} onChange={v => setOrientadorField(i, 'nome', v)} />
-                <Input label="E-mail institucional *" type="email" value={o.email} onChange={v => setOrientadorField(i, 'email', v)} />
+                <Input label="E-mail *" type="email" value={o.email} onChange={v => setOrientadorField(i, 'email', v)} />
                 {o.email && !emailPermitido(o.email) && (
                   <p style={{ fontSize: 11, color: '#dc2626', margin: 0 }}>
-                    Use apenas e-mail institucional: {EMAIL_DOMINIOS_PERMITIDOS.join(', ')}.
+                    Informe um e-mail válido.
                   </p>
                 )}
                 {mat && jaCadastrados != null && jaCadastrados > 0 && (
