@@ -89,6 +89,14 @@
       ]
     },
     {
+      "collectionGroup": "feira_inscricoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "edicao_id", "order": "ASCENDING"  },
+        { "fieldPath": "criado_em", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "feira_recursos",
       "queryScope": "COLLECTION",
       "fields": [
