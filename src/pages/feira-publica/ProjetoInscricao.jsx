@@ -47,6 +47,13 @@ export default function ProjetoInscricao() {
 
   useEffect(() => { iniciar() }, [tokenEscola, rascunhoId])
 
+  useEffect(() => {
+    const cats = Array.from(new Set((form.estudantes || []).map(e => e.categoria).filter(Boolean)))
+    if (cats.length === 1 && cats[0] !== form.categoria) {
+      updateForm({ categoria: cats[0] }, 'projeto')
+    }
+  }, [form.estudantes])
+
   async function iniciar() {
     try {
       const linkData = await feiraLinksService.getByToken(tokenEscola)
